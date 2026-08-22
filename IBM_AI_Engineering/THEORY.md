@@ -67,10 +67,183 @@
 13) Apache Kafka - распределенная потоковая платформа для создания конвейеров больших данных и выполнения аналитики в реальном времени   
 14) NLTK - библиотека для обработки текста, токинизации и стемминга   
 15) TextBlob - библиотека для теггирирования частей речи, извлечения существительных, анализа настроений и перевода   
-16) Stanza - библиотека NLP для теггирирования частей речи, распознавания именованных сущностей и анлиза зависимостей   
+16) Stanza - библиотека NLP для теггирирования частей речи, распознавания именованных сущностей и анлиза зависимостей
 
 
+## Линейная регрессия   
+### Простая линейна регрессия   
+**Линейная регрессия** - моделирует линейную зависимость между непрерывной целевой переменной и объясняющими признаками (одна неизвестная переменная оценивает зависимую переменную). Например прогнозирование выброса CO2 двигателем может оцениваться его объемом, в таком случае при построении графика диаграммы рассеяния в зависимости CO2 от объема двигателя покажет корреляцию между двумя переменными. С помощью линейной регрессии можно будет определить наиболее подходящую линию по данным: по мере роста объема двигателя увеличивается и объем выбросов и эта зависимость является примерно линейной. Мы можем использовать простую линейную регрессию для прогнозирования выбросов автомобиля с определенным объемом двигателя  
 
+Формула линейной регрессии:  
+> y = a * x + b  
+> где:  
+> y - целевая переменная, то что мы предсказываем (CO2)  
+> x - входная переменная на основе которой ведется предсказание (объем двигателя)  
+> a - коэффициент наклона, показывает насколько изменится y при изменении x на 1  
+> b - свободный член, значение y при х = 0   
+
+Алгоритм линейной регрессии находит такие значения a и b чтобы ошибка (сумма квадратов расстояний от точек до линии) была минимальной     
+
+Практика: создание модели простой линейной регрессии выброса CO2 в зависимости от одной переменной  
+~~~Python
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn import linear_model
+from sklearn.metrics import r2_score, mean_squared_error
+
+#Загрузка набора данных (О расходе топлива
+url= "https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%202/data/FuelConsumptionCo2.csv"
+df=pd.read_csv(url)
+# проверка успешности загрузки с помощью 5 случайных записей
+df.sample(5)
+
+#Рассмотрение статистической сводки
+df.describe()
+
+#Выбираем функции, которые могут быть указаны на выброс CO2
+cdf = df[['ENGINESIZE','CYLINDERS','FUELCONSUMPTION_COMB','CO2EMISSIONS']]
+cdf.sample(9)
+
+#Рассматривам гистограммы для каждой
+viz = cdf[['CYLINDERS','ENGINESIZE','FUELCONSUMPTION_COMB','CO2EMISSIONS']]
+viz.hist()
+plt.show()
+
+#Строим график зависимости CO2 от каждой выбранной категории
+plt.scatter(cdf.FUELCONSUMPTION_COMB, cdf.CO2EMISSIONS,  color='blue')
+plt.xlabel("FUELCONSUMPTION_COMB")
+plt.ylabel("Emission")
+plt.show()
+
+plt.scatter(cdf.ENGINESIZE, cdf.CO2EMISSIONS,  color='blue')
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+plt.show()
+
+plt.scatter(cdf.CYLINDERS, cdf.CO2EMISSIONS,  color='blue')
+plt.xlabel("CYLINDERS")
+plt.ylabel("Emission")
+plt.show()
+#Исходя изграфиков основным вибираем критерий ENGINE_SIZE
+
+#Извлекаем входную функцию и целевые входные параметры
+X = cdf.ENGINESIZE.to_numpy()
+y = cdf.CO2EMISSIONS.to_numpy()
+
+#Разделяем наборы данных на обучение 80/20
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42)
+
+#Выходы представляют собой векторы NumPy
+type(X_train), np.shape(X_train), np.shape(X_train)
+
+#Обучаем простую модель линейной регрессии
+regressor = linear_model.LinearRegression()
+regressor.fit(X_train.reshape(-1, 1), y_train)
+
+# Выводим коэффициенты (параметры регрессии определенные моделью)
+print ('Coefficients: ', regressor.coef_[0])
+print ('Intercept: ',regressor.intercept_)
+
+#Визуализация данных
+plt.scatter(X_train, y_train,  color='blue')
+plt.plot(X_train, regressor.coef_ * X_train + regressor.intercept_, '-r')
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+plt.show()
+
+#Оценка качества модели
+# Предсказание на тестовых данных
+y_pred = regressor.predict(X_test.reshape(-1, 1))
+
+# Метрики
+print("R² (коэффициент детерминации):", r2_score(y_test, y_pred))
+print("MSE (среднеквадратичная ошибка):", mean_squared_error(y_test, y_pred))
+~~~
+
+### Множественная линейная регрессия  
+**Множественная линейная регрессия** - является расширением простой линейной регрессии, где для оценки зависимой переменной используются 2 или более зависимые переменные (выбросы CO2 можем прогнозировать за счет таких переменных как: обем двигателя, потребление топлива, количество целиндров). Дает лучшую модель по сравнению с простой линейной регрессией. Метод применяется в сфере образования для прогнозирования успеваемости   
+
+Формула:  
+> y = a₁·x₁ + a₂·x₂ + ... + aₙ·xₙ + b  
+
+Практика: применение мноественной регрессии на тех ж данных    
+~~~Python
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn import preprocessing
+from sklearn.model_selection import train_test_split
+from sklearn import linear_model
+
+url= "https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%202/data/FuelConsumptionCo2.csv"
+df = pd.read_csv(url)
+df.sample(5)
+df.describe()
+
+#Выбрасываем из набора не интеесующие нас данные
+df = df.drop(['MODELYEAR', 'MAKE', 'MODEL', 'VEHICLECLASS', 'TRANSMISSION', 'FUELTYPE',],axis=1)
+#Смотрим уровень корреляции данных
+df.corr()
+#Отбрасываем коррелируемые друг с другом данные (Пример Enginsyze 0.87 и Cylindrus 0.85)
+df = df.drop(['CYLINDERS', 'FUELCONSUMPTION_CITY', 'FUELCONSUMPTION_HWY','FUELCONSUMPTION_COMB',],axis=1)
+df.head(9)
+
+#Выбираем предикативный признак не являющиеся избыточным строя матрицы разбросса
+axes = pd.plotting.scatter_matrix(df, alpha=0.2)
+
+for ax in axes.flatten():
+    ax.xaxis.label.set_rotation(90)
+    ax.yaxis.label.set_rotation(0)
+    ax.yaxis.label.set_ha('right')
+
+plt.tight_layout()
+plt.gcf().subplots_adjust(wspace=0, hspace=0)
+plt.show()
+
+#Извлекаем получнные столбцы и преобразуем кадры данных в массивы NumPY
+X = df.iloc[:,[0,1]].to_numpy()
+y = df.iloc[:,[2]].to_numpy()
+
+#При помощи scikit-learn стандартизируем входные функции при помощи вычитания среднего и разделения на стандартное отклонение
+std_scaler = preprocessing.StandardScaler()
+X_std = std_scaler.fit_transform(X)
+pd.DataFrame(X_std).describe().round(2)
+
+X_train, X_test, y_train, y_test = train_test_split(X_std,y,test_size=0.2,random_state=42)
+
+#Тренируем модель при помощи такогоже механизма как и у линейной регрессии
+regressor = linear_model.LinearRegression()
+regressor.fit(X_train, y_train)
+
+coef_ =  regressor.coef_
+intercept_ = regressor.intercept_
+print ('Coefficients: ',coef_)
+print ('Intercept: ',intercept_)
+
+#Преобразуем параметры модели в исходное состояние до стандартизации
+means_ = std_scaler.mean_
+std_devs_ = np.sqrt(std_scaler.var_)
+
+coef_original = coef_ / std_devs_
+intercept_original = intercept_ - np.sum((means_ * coef_) / std_devs_)
+print ('Coefficients: ', coef_original)
+print ('Intercept: ', intercept_original)
+
+#Визуализация данных в 2D
+plt.scatter(X_train[:,1], y_train,  color='blue')
+plt.plot(X_train[:,1], coef_[0,1] * X_train[:,1] + intercept_[0], '-r')
+plt.xlabel("FUELCONSUMPTION_COMB_MPG")
+plt.ylabel("Emission")
+plt.show()
+
+plt.scatter(X_train[:,0], y_train,  color='blue')
+plt.plot(X_train[:,0], coef_[0,0] * X_train[:,0] + intercept_[0], '-r')
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+plt.show()
+~~~
 
 
 
