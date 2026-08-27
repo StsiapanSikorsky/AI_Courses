@@ -340,41 +340,57 @@ print(churn_df)
 
 #Выбираем используемые поля для прогнозирования
 churn_df = churn_df[['tenure', 'age', 'address', 'income', 'ed', 'employ', 'equip', 'churn']]
-churn_df['churn'] = churn_df['churn'].astype('int')
+churn_df['churn'] = churn_df['churn'].astype('int')  #Превращаем столбец данных churn в целые числа
 churn_df
 print(churn_df)
 
-#Моделируем поля ввода Х
+#Моделируем поля ввода Х (берем все столбцы кроме churn (доход), превращаем их в массив чисел NumPy
 X = np.asarray(churn_df[['tenure', 'age', 'address', 'income', 'ed', 'employ', 'equip']])
 X[0:5]
 print(X[0:5])
 
-#Моделируем целевое поле y
+#Моделируем целевое поле y (берем только столбец churn)
 y = np.asarray(churn_df['churn'])
 y[0:5]
 print(y[0:5])
 
-#Нормализуем набор данных
+#Нормализуем набор данных для масштабирования
+'''
+Это делается для того, 
+чтобы один из признаков не перевешивал другие
+(например возраст = 20 - 80 лет, а доход = 1000 - 15000)
+для более корректной треировки модели
+'''
 X_norm = StandardScaler().fit(X).transform(X)
 X_norm[0:5]
 print(X_norm[0:5])
 
 X_train, X_test, y_train, y_test = train_test_split( X_norm, y, test_size=0.2, random_state=4)
 
-#Строим модель LogisticRegression из набора sikit-learn
+#Строим модель LogisticRegression (LR) из набора sikit-learn
 LR = LogisticRegression().fit(X_train,y_train)
 
 #Выполняем предсказание с помощью обученной модели
+'''
+Показывает только коненый результат
+'''
 yhat = LR.predict(X_test)
 yhat[:10]
 print(yhat[:10])
 
 #Определение вероятностей класса [вероятность класса 0, вероятность класса 1]
+'''
+Показывает степень уверенности (вероятности)
+'''
 yhat_prob = LR.predict_proba(X_test)
 yhat_prob[:10]
 print(yhat_prob[:10])
 
 #Анализ коэффициентов логистической регрессии
+'''
+Отрицательный коэффициент - чем больше значение, тем меньше шанс ухода
+Положительный коэффициент - чем больше значение, тем больше шанс ухода
+'''
 coefficients = pd.Series(LR.coef_[0], index=churn_df.columns[:-1])
 coefficients.sort_values().plot(kind='barh')
 plt.title("Feature Coefficients in Logistic Regression Churn Model")
@@ -397,7 +413,7 @@ log_loss(y_test, yhat_prob)
 Основные алгоритмы построения модели классификации:   
 1) Наивный байесовский алгоритм - использует вероятности для определения класса, основываясь на частоте встречаемости признаков   
 2) Логистическая регрессия   
-3) Деревья решений - это как серия вопросов пока ккомпьютер не определит класс  
+3) Деревья решений - это как серия вопросов пока компьютер не определит класс  
 4) K-ближайшие соседей - когда компьютер смотрит на соседние объекты рядом и принимает решение  
 5) Машины опорных векторов - ищут оптимальную границу между классами чтобы максимально разделить их  
 6) Нейронные сети  
@@ -405,7 +421,7 @@ log_loss(y_test, yhat_prob)
 Бинарные классификаторы можно расширить для обработки нескольких классов при помощи определенных стратегий, которые разбивают задачу на более простые методы   
 
 Стратегия *"один против всех"* - это способ когда можно использовать несколько бинарных классификаторов для решения задачи с несколькими классами (создается столько классификаторов сколько и классов)   
-Стратегия *"один против одного"* - это способ, при помощи которого алгоритмы классификации решают задачу, когда нужно выбрать один класс из нескольких возможных. Для каждой пары создается отдельный бинарный классификатор который решает к какому из двух классов относится обект. Когда все "судьи" проголосуют, результат присваиваетя классу который получил больше всего голосов   
+Стратегия *"один против одного"* - это способ, при помощи которого алгоритмы классификации решают задачу, когда нужно выбрать один класс из нескольких возможных. Для каждой пары создается отдельный бинарный классификатор который решает к какому из двух классов относится объект. Когда все "судьи" проголосуют, результат присваиваетя классу который получил больше всего голосов   
 
 Практика: реализация множественной классификации с алгоритмом логистической регрессии и стратегиями "один против всех" и "один против одного" для предсказания риска ожирения   
 ~~~Python
@@ -504,10 +520,159 @@ plt.xlabel("Importance")
 plt.show()
 ~~~
 
+### Деревья решениц (Decision tree)   
+**Дерево решений** - это алгоритм, который можно визуализировать в виде блок схемы для классификации точек данных. Каждый внутренний узел соответствует тесту, каждая ветвь соответствует результату теста, а каждый листовый узел присваивает свои данные классу. Дрессировка дерева начинается с начального узла и помеченных обучающих данных, узел обучается работать с данными и ищется функция, которая лучше всего разбивает данные на предварительно помеченные классы в соответствии с заранее выбранным критерием разделения. Процедура повторяется для каждогонового узла, используя каждую функцию только один раз. Дерево растет пока во всех узлах не будет по одному классу или закончится выбор объектов или не будет соблюден заранее выбранный критерий остановки (упреждающая обрезка дерева)  
 
+Критерии остановки:  
+1) Достигнута максимальная глубина дерева  
+2) Превышено минимальное количество точек данных в узле  
+3) Превышено минимальное количество образцов в листе  
+4) Дерево достигло максимального количества листовых узлов  
 
+Обрезка дерева требуется когда:   
+1) Дерево слишком сложное   
+2) Слишком много классов и функций  
 
+Плюсы обрезанного дерева:  
+1) Лаконичнее и понятнее  
+2) Повышение точности прогнозов  
 
+Построение дерева решений:  
+1) Выбор корневого узла - алгоритм перебирает все признаки и для каждого считает, насколько хорошо он разделяет данные. Метриками для оценки являются:  
+- Примесь Джини  
+- Энтропия   
+- Информационный выигрыш  
+2) Разделение - данные делятся на группы по значениям признака   
+3) Повтор - для каждой группы алгоритм повторяет шаги 1 и 2 пока не достигнет:   
+- максимальной глубины   
+- минимального числа обектов в листе   
+- пока все объекты в группе не будут одного класса  
+
+Практика: прогнозирование лекарств на основе данных пациента при помощи дерева решений  
+~~~Python
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn import metrics
+
+import warnings
+warnings.filterwarnings('ignore')
+
+path= 'https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%203/data/drug200.csv'
+my_data = pd.read_csv(path)
+my_data
+my_data.info()
+
+#Преобразуем категориальные признаки в числовые
+label_encoder = LabelEncoder()
+my_data['Sex'] = label_encoder.fit_transform(my_data['Sex'])
+my_data['BP'] = label_encoder.fit_transform(my_data['BP'])
+my_data['Cholesterol'] = label_encoder.fit_transform(my_data['Cholesterol'])
+print(my_data)
+
+#Проверка есть ли в наборе недостающие значения
+my_data.isnull().sum()
+
+#Оцениваем корреляцию целевой переменной с входными признаками
+custom_map = {'drugA':0,'drugB':1,'drugC':2,'drugX':3,'drugY':4}
+my_data['Drug_num'] = my_data['Drug'].map(custom_map)
+print(my_data)
+my_data.drop('Drug', axis = 1).corr()['Drug_num']
+
+#Распределение набора данных
+category_counts = my_data['Drug'].value_counts()
+plt.bar(category_counts.index, category_counts.values, color='blue')
+plt.xlabel('Drug')
+plt.ylabel('Count')
+plt.title('Category Distribution')
+plt.xticks(rotation=45)
+plt.show()
+
+#Моделирование
+y = my_data['Drug']
+X = my_data.drop(['Drug','Drug_num'], axis=1)
+
+X_trainset, X_testset, y_trainset, y_testset = train_test_split(X, y, test_size=0.3, random_state=32)
+
+'''Определяем классификатор дерева решений'''
+drugTree = DecisionTreeClassifier(criterion="entropy", max_depth = 4)
+drugTree.fit(X_trainset,y_trainset)
+
+#Проведение оценки
+tree_predictions = drugTree.predict(X_testset)
+print("Decision Trees's Accuracy: ", metrics.accuracy_score(y_testset, tree_predictions))
+plot_tree(drugTree)
+plt.show()
+~~~
+
+### Деревья регрессии (Regression trees)   
+**Дерево регрессии** аналогично дереву решений предсказывает непрерывные значения, а не дискретные классы. Главным отличием является характеристика помеченных и целевых данных. При классификации целевая переменная носит категориальный характер (истина или ложь), а при регрессии целевым показателем является непрервное ззначение (тепература, зарплата и т.д.). *Когда дерево решений адаптировано для решения задач регрессии оно называется деревом регрессии*  
+
+Деревья регрессии используют для прогнозирования доходов, температуры, риска лесных пожаров...  
+
+Деревья регрессии создаются путем рекурсивного разделения набора данных на подмножества с целью минимизации дисперсии или MSE и целевых значений   
+
+Построение дерева регрессии:  
+1) Выбор разделения  
+- делит данные на 2 группы  
+- считает MSE  
+- выбирает разделение с наименьшей суммой MSE  
+2)MSE  
+>MSE = (1/n) · Σ(yᵢ — ȳ)²  
+>где:  
+>yᵢ — реальное значение  
+>ȳ — среднее значение в группе  
+3)Повтор шагов 1,2 для каждой полученной группы пока не достигнет:  
+- максимальной глубины  
+- минимального числа обектов в листе  
+
+Практика: построение дерева регрессии для прогнозирования чаевых водителям  
+~~~Python
+from __future__ import print_function
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import normalize
+from sklearn.metrics import mean_squared_error
+
+import warnings
+warnings.filterwarnings('ignore')
+
+url = 'https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/pu9kbeSaAtRZ7RxdJKX9_A/yellow-tripdata.csv'
+raw_data = pd.read_csv(url)
+raw_data
+
+correlation_values = raw_data.corr()['tip_amount'].drop('tip_amount')
+correlation_values.plot(kind='barh', figsize=(10, 6))
+
+#Предварительная обработка дынных
+y = raw_data[['tip_amount']].values.astype('float32')
+raw_data = raw_data.drop(['payment_type', 'VendorID', 'store_and_fwd_flag', 'improvement_surcharge'], axis=1)
+proc_data = raw_data.drop(['tip_amount'], axis=1)
+X = proc_data.values
+X = normalize(X, axis=1, norm='l1', copy=False)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+#Создание модели
+dt_reg = DecisionTreeRegressor(criterion = 'squared_error',
+                               max_depth=8,
+                               random_state=35)
+dt_reg.fit(X_train, y_train)
+
+#Оценка модели
+y_pred = dt_reg.predict(X_test)
+mse_score = mean_squared_error(y_test, y_pred)
+print('MSE score : {0:.3f}'.format(mse_score))
+r2_score = dt_reg.score(X_test,y_test)
+print('R^2 score : {0:.3f}'.format(r2_score))
+~~~
 
 
 
