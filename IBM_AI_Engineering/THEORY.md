@@ -674,9 +674,160 @@ r2_score = dt_reg.score(X_test,y_test)
 print('R^2 score : {0:.3f}'.format(r2_score))
 ~~~
 
+### Контролируемое обучение SVM  
+**SVM (Support Vector Machines)** - машины опорных векторов использующиеся для классификации. Это метод контролируемого обучения для построения классификационных и регрссионных моделей, который отображает каждый экземпляр данных в виде точки в многомерном пространстве, где входные объекты представлены в виде значения определенной координаты. Хорошо подходит для оценки несбалансированных данных (например малый процент мошеннеческих транзакций в целевой таблице данных)  
 
+Основная цель SVM создать гиперплоскость, которая разделяет набор данных на две части и нахдит наибольшее поле. Главное преимущество - умение находить оптимальную разделяющую границу между классами  
 
+Простейшие SVM это алгоритмы ML с двоичной классификацией. SVM пытаются разделить данные на два класса находя границу принятия решений, в двумерном пространстве граница представляет собой линию  
 
+Маржа - расстояние от гиперплоскости до ближайших точек каждого класа. Ближайшие точечные представители каждого класса являются опорными векторами  
 
+Преимущества SVM:  
+1) Эффективнсти в пространствах большой размерности  
+2) Устойчивость к переобучениию  
+3) Отлично справляется с линейно разделенными данными  
+4) Работает со слабо разделенными данными, использую опцию со слабыми полями  
 
+Ограничения SVM  
+1) Медленное обучение на больших наборах данных  
+2) Чувствительность к шуму и перекрывающимся классам  
 
+SVM подходит для задач анализа изображений (классификация изображений и распознование рукописных цифр), парсинг, обнаружение спама и анализ настроений, распознование речи, обнаружение аномалий, фильтрации шума  
+
+Scikit-learn предоставляет множество функций ядра для SVM: линейные, полиномиальные, RBF и сигмоидные  
+
+Практика: выявление мошеннеческих транзакций по кредитным картам при помощи дерева решений + SVM  
+
+~~~Python
+from __future__ import print_function
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import normalize, StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import roc_auc_score
+from sklearn.svm import LinearSVC
+
+import warnings
+warnings.filterwarnings('ignore')
+
+url= "https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%203/data/creditcard.csv"
+raw_data=pd.read_csv(url)
+raw_data
+
+#Построение диаграммы для понимания баланса данных
+'''Берем уникальные значения класса из набора'''
+labels = raw_data.Class.unique()
+'''Подсчет сколько встречается кадый класс'''
+sizes = raw_data.Class.value_counts().values
+'''Строим круговую диограмму'''
+fig, ax = plt.subplots()
+ax.pie(sizes, labels=labels, autopct='%1.3f%%')
+ax.set_title('Target Variable Value Counts')
+plt.show()
+
+#Визуализируем какие функции больше всего влияют на модель
+'''Для эффективности моделирования используем самые коррелированные функции'''
+correlation_values = raw_data.corr()['Class'].drop('Class')
+correlation_values.plot(kind='barh', figsize=(10, 6))
+'''Оценка 6 наиболее влияющих входных признаков'''
+correlation_values = abs(raw_data.corr()['Class']).drop('Class')
+correlation_values = correlation_values.sort_values(ascending=False)[:6]
+correlation_values
+
+#Предварительная обработка данных
+'''Заменяем исходные данные на стандартезированные в колонках 1-29 (остльные не нужны)'''
+raw_data.iloc[:, 1:30] = StandardScaler().fit_transform(raw_data.iloc[:, 1:30])
+data_matrix = raw_data.values
+
+X = data_matrix[:,[3,10,12,14,16,17]]
+y = data_matrix[:, 30]
+X = normalize(X, norm="l1")
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+#Создаем модель классификации
+'''Вычисляем веса выборки для учета дисбаланса класса'''
+w_train = compute_sample_weight('balanced', y_train)
+'''Используя веса обучаем дерево решений'''
+dt = DecisionTreeClassifier(max_depth=4, random_state=35)
+dt.fit(X_train, y_train, sample_weight=w_train)
+
+'''Создаем модель SVM'''
+svm = LinearSVC(class_weight='balanced', random_state=31, loss="hinge", fit_intercept=False)
+svm.fit(X_train, y_train)
+
+#Оценка моделей
+'''Оценка модели дерева решений'''
+y_pred_dt = dt.predict_proba(X_test)[:,1]
+roc_auc_dt = roc_auc_score(y_test, y_pred_dt)
+print('Decision Tree ROC-AUC score : {0:.3f}'.format(roc_auc_dt))
+
+'''Оценка модели SVM'''
+y_pred_svm = svm.decision_function(X_test)
+roc_auc_svm = roc_auc_score(y_test, y_pred_svm)
+print("SVM ROC-AUC score: {0:.3f}".format(roc_auc_svm))
+~~~
+
+### Контролируемое обучение с использованием K-NN  
+**K-NN (K - Nearest Neighbors)** - контролируемый алгоритм ML, который берет группу помечченных точек данных и использует их для обучения маркировке других точек данных. Алгоритм используется как для классификации так и для регрессии. Работает по принципу "скажи кто твой сосед и я скажу кто ты"  
+
+Процесс работы K-NN:  
+1) Выбирается значение К (сколько ближайших соседей рассматриваем)  
+2) Вычисляетя расстояние от каждой немаркированной точки запроса до всех отмеченных случаев в обучающих данных  
+3) Находятся К-наблюдений в обучающих данных, которые находятся ближе всего к точке запроса  
+4) Прогноз значения точки данных, используя самое популярное значение класса из К-ближайших соседей (если рядом 2 зеленые и одна синяя точка, принимаем решение что мы являемся зеленой точкой)  
+4) В случае регрессии прогнозируется используя среднее или медианное значение целевых значений  
+
+Для нахождения оптимального значения K необходимо протестировать диапазон значений тестового набора данных и измерить точность. Слишком малое или большое значение К будет приводить к уменьшению точности моделей  
+
+Чем больше К, там больше становится сглажена граница принятия решений, высокий риск недообучения и низкий риск переобучения, но модель работает медленнее. Поэтому стоит выбирать оптимальное значение К  
+
+Практика: классификация новых клиентов телекоммуникационной компании при помощи KNN  
+~~~Python
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+
+df = pd.read_csv('https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%203/data/teleCust1000t.csv')
+df.head()
+
+#Рассмотрение классификации по каждой категории
+print(df['custcat'].value_counts())
+
+#Визуализация корреляции набора данных
+correlation_matrix = df.corr()
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5)
+
+'''Поскольку нас интересует корреляция с целевой переменной custcat выводим корреляцию для нее'''
+correlation_values = abs(df.corr()['custcat'].drop('custcat')).sort_values(ascending=False)
+print(correlation_values)
+
+#Разделяем данные на набор входных и выходных данных
+X = df.drop('custcat',axis=1)
+y = df['custcat']
+
+'''Нормализуем данные'''
+X_norm = StandardScaler().fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=4)
+
+#Обучение
+k = 3
+knn_classifier = KNeighborsClassifier(n_neighbors=k)
+knn_model = knn_classifier.fit(X_train,y_train)
+yhat = knn_model.predict(X_test)
+
+#Оценка точности
+print("Test set Accuracy: ", accuracy_score(y_test, yhat))
+~~~
