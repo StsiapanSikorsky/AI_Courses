@@ -831,3 +831,127 @@ yhat = knn_model.predict(X_test)
 #Оценка точности
 print("Test set Accuracy: ", accuracy_score(y_test, yhat))
 ~~~
+
+### Модели предвзятостей, вариаций и ансаблей
+**Предвзятость/Смещенние (Bias)** - смещение точки относительно центральной ожидаемой точки (например дротики в поле дартса). Дисперсия измеряет расстояние между точками (дротиками) и отражает точность. Предвзятость показывает на сколько точны прогнозы модели, измеряется средней разницей между прогнозами модели и фактически целевыми значениями в данных
+
+**Дисперсия (Variance)** -  прогнозов показывает, насколько сильно изменяются прогнозы модели при обучении на разных подмножествах одного и того же набора данных. Когда у модели высокая дисперсия прогнозов, она становится чрезвычайно чувствительна к изменению выбранных обучающих данных (более чувствительны к шуму и выбросам)
+
+>[!IMPORTANT]
+>При обучении необходимо искать баланс предвзятости и дисперсии
+
+Недостаточный уровень оснащенности - низкая сложность модели приводящая к высокой погрешности и ошибочным прогнозам в отношении обучающих данных
+
+Переоснащение - высокая сложность модели приводящая к высокой дисперсии, модель становится слишком чувствиельной к обучающим данным
+
+Ансамблевые модели позволяющие уравновешивать дисперсию
+1) Баггинг - снижает риск переобучения и дисперсии за счет комбинирования нескольких базовых знаний с высокой дисперсией и низкой степенью предвзятости. Базовые учащиеся параллельно обучаются на начальных образцах данных, каждый последующий базовый ученик опирается на предыдущий результат постепенно уменьшая предвзятость. (Обучаем много моделей на разных подвыборках данных и усредняем результат). Лучший выбор если у модели высокий Variance (переобученная)
+2) Бустинг - метод ансамблевого моделирования позволяющий собрать ряд слабых уеников(модель ML с учителем), каждый из которых нацелен на исправление ошибок предыдущего. Окончательная модель формируется как сумма этих слабых учащихся. На каждой итерации модели веса неправильно классифицированных данных предыдущей модели увеличиваются, а веса правильно классифицируемых уменьшаются. (Обучаем модели последовательно, где каждая следующая исправляет ошибки предыдущей). Используется если модель стабильна но постоянно ошибается в одну сторону
+3) Стэкинг - обучаем несколько базовых моделей разных типов (SVM, Logistic Regression и тд) а затем мета-модель учится на их предсказаниях.
+
+>[!IMPORTANT]
+>Популярные алгоритмы бустинга:
+>Gradient boosting
+>XBoosting
+>AdaBoosting
+
+Базовые модели для обучения в ансамбле
+1) Деревья решений
+2) Деревья регрессии
+>Их предвзятость и дисперсию легко скорректировать
+
+Пакетирование и агрегация бутстрапа - 
+
+Случайные леса - метод пакетирования позволяющий обучать несколько деревьев решений на основе загруженных наборов данных. Они не обязательно очень глубокие, основное внимание сосредотачивается на минимизации предвзятости прогнозов
+
+Практика: создание и измерение относительных характеристик моделей RandomForest и XBoost для прогнозирования цен на жилье
+~~~Python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+import time
+
+df = pd.read_csv("https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/UZPRFNucrENAFm25csq6eQ/California-housing.csv")
+
+X = df.drop(columns=["Target"])
+y = df["Target"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#Смотрим сколько наблюдений и функций имеет набор данных
+N_observations, N_features = X.shape
+print('Number of Observations: ' + str(N_observations))
+print('Number of Features: ' + str(N_features))
+
+#Определяем количество базовых оценок или отдельных деревьев
+#Инициализируем модели RandomForest и XBoost
+n_estimators=100
+rf = RandomForestRegressor(n_estimators=n_estimators, random_state=42)
+xgb = XGBRegressor(n_estimators=n_estimators, random_state=42)
+
+#Тренируем Random Forest
+start_time_rf = time.time()
+rf.fit(X_train, y_train)
+end_time_rf = time.time()
+rf_train_time = end_time_rf - start_time_rf
+
+#Тренируем XGBoost
+start_time_xgb = time.time()
+xgb.fit(X_train, y_train)
+end_time_xgb = time.time()
+xgb_train_time = end_time_xgb - start_time_xgb
+
+#Делаем прогнозы на тестовом наборе
+start_time_rf = time.time()
+y_pred_rf = rf.predict(X_test)
+end_time_rf = time.time()
+rf_pred_time = end_time_rf - start_time_rf
+
+start_time_xgb = time.time()
+y_pred_xgb = xgb.predict(X_test)
+end_time_xgb = time.time()
+xgb_pred_time = end_time_xgb - start_time_xgb
+
+#Вычисляем MSE и R^2
+mse_rf = mean_squared_error(y_test, y_pred_xgb)
+mse_xgb = mean_squared_error(y_test, y_pred_xgb)
+r2_rf = r2_score(y_test, y_pred_rf)
+r2_xgb = r2_score(y_test, y_pred_xgb)
+print(f'Random Forest:  MSE = {mse_rf:.4f}, R^2 = {r2_rf:.4f}')
+print(f'      XGBoost:  MSE = {mse_xgb:.4f}, R^2 = {r2_xgb:.4f}')
+
+print(f'Random Forest:  Training Time = {rf_train_time:.3f} seconds, Testing time = {rf_pred_time:.3f} seconds')
+print(f'      XGBoost:  Training Time = {xgb_train_time:.3f} seconds, Testing time = {xgb_pred_time:.3f} seconds')
+
+#Визуализация результатов
+plt.subplot(1, 2, 1)
+plt.scatter(y_test, y_pred_rf, alpha=0.5, color="blue",ec='k')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2,label="perfect model")
+plt.plot([y_test.min(), y_test.max()], [y_test.min() + std_y, y_test.max() + std_y], 'r--', lw=1, label="+/-1 Std Dev")
+plt.plot([y_test.min(), y_test.max()], [y_test.min() - std_y, y_test.max() - std_y], 'r--', lw=1, )
+plt.ylim(0,6)
+plt.title("Random Forest Predictions vs Actual")
+plt.xlabel("Actual Values")
+plt.ylabel("Predicted Values")
+plt.legend()
+
+
+# XGBoost plot
+plt.subplot(1, 2, 2)
+plt.scatter(y_test, y_pred_xgb, alpha=0.5, color="orange",ec='k')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2,label="perfect model")
+plt.plot([y_test.min(), y_test.max()], [y_test.min() + std_y, y_test.max() + std_y], 'r--', lw=1, label="+/-1 Std Dev")
+plt.plot([y_test.min(), y_test.max()], [y_test.min() - std_y, y_test.max() - std_y], 'r--', lw=1, )
+plt.ylim(0,6)
+plt.title("XGBoost Predictions vs Actual")
+plt.xlabel("Actual Values")
+plt.legend()
+plt.tight_layout()
+plt.show()
+~~~
+
