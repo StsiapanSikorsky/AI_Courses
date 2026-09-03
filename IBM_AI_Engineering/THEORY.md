@@ -980,7 +980,7 @@ plt.show()
 
 Методы кластеризации:
 1) k-means - идентифицирует k-кластеры с минимальной дисперсией. Эффективно масштабируется при работе с большими данными
-2) алгоритмы на основе плотности - создают кластеры любой формы. Эффективно для нерегулярных кластеров и зашумленных данных
+2) алгоритмы на основе плотности - создают кластеры любой формы. Эффективно для нерегулярных кластеров и зашумленных данных   
 2.1) DBSCAN -  
 3) иерархическая кластеризация - строим дерево кластеров
 4) распределительные
@@ -991,3 +991,191 @@ plt.show()
 2) Агломеративная - использует подход "снизу вверх". Каждое наблюдение начинается как отдельный кластер, а похожие кластеры объединяются в более крупные родительские кластеры
 
 
+### K-means кластеризация
+**K-means** - итеративный алгоритм кластеризации на основе центроидов разбивающий набор данных на похожие группы в зависимости от расстояния между центроидами. Алгоритм делит данные на k-непрерывающихся кластеров, где k-выбранный параметр. Кластеры сконструированы таким образом, чтобы иметь минимальную дисперсию от центроидов и максимальную разницу между кластерами
+
+Чем меньше значение k, тем кластер больше и меньше детализация
+
+Использование k-means:
+1) Инициализируем алгоритм
+- выбираем количество кластеров
+- случайным образом выбираем k начальных местоположений центроидов (точки данных или другие точки из пространства объектов
+2) Итеративно назначаем точки кластерам и обновляем их центроиды
+- вычисляем матрицу расстояний (состоит из расстояния каждой точки до каждого центроида)
+- присваиваем точку данных кластеру с ближайшим центроидом
+- обновляем каждый центроид кластера как среднее значение точек данных кластера
+3) Повторяем пока положение центроида не стабилизируется или не будет достигнуто максимальное количество итераций
+
+K-means не очень хорошо работает на несбалансированных данных (например 200 красных и 10 синих точек данных). Также алгоритм чувствителен к выбросам и может плохо работать в зашумленных данных
+
+Цель K-means минимизировать внутрикластерную дисперсию для всех кластеров одновременно
+
+Эврестические методы оценки эффективности K-means:
+1) анализ силуэта - позволяет определить насколько точчка данных похожа на кластер по сравнению с другими кластерами
+2) метод Элбоу - график целевой функции K-means для разного количества кластеров
+3) индекс Дэвиса-Боулдина - измеряет седний коэффициент сходства каждого кластера
+
+Алгоритм применяется для сигментации клиентов, понимания что пытаются выполнить посетители сайта, распознавание шаблонов, сжатия данных
+
+Практика:
+~~~Python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.datasets import make_blobs
+from sklearn.preprocessing import StandardScaler
+import plotly.express as px
+import seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
+
+#Создаем свой набор данных
+np.random.seed(0)
+X, y = make_blobs(n_samples=5000, centers=[[4,4], [-2, -1], [2, -3], [1, 1]], cluster_std=0.9)
+plt.scatter(X[:, 0], X[:, 1], marker='.',alpha=0.3,ec='k',s=80)
+
+#Настройка к-средств
+'''4 кластера, 12 запусков'''
+k_means = KMeans(init = "k-means++", n_clusters = 4, n_init = 12)
+k_means.fit(X)
+
+k_means_labels = k_means.labels_
+k_means_labels
+
+k_means_cluster_centers = k_means.cluster_centers_
+k_means_cluster_centers
+
+#Визуализируем данные
+fig = plt.figure(figsize=(6, 4))
+colors = plt.cm.tab10(np.linspace(0, 1, len(set(k_means_labels))))
+ax = fig.add_subplot(1, 1, 1)
+
+
+for k, col in zip(range(len([[4, 4], [-2, -1], [2, -3], [1, 1]])), colors):
+    my_members = (k_means_labels == k)
+    cluster_center = k_means_cluster_centers[k]
+    ax.plot(X[my_members, 0], X[my_members, 1], 'w', markerfacecolor=col, marker='.',ms=10)
+    ax.plot(cluster_center[0], cluster_center[1], 'o', markerfacecolor=col,  markeredgecolor='k', markersize=6)
+
+ax.set_title('KMeans')
+ax.set_xticks(())
+ax.set_yticks(())
+plt.show()
+~~~
+
+## Кластеризация DBSCAN и HDBSCAN
+**DBSCAN** - алгоритм пространственной кластеризации на основе плотности, который создает кластеры со значением плотности, предоставленным пользователем. Значение плотности расположено вокруг пространственного центроида. Область непосредственно прилигающая к центроиду называется *окрестностью* и DBSCAN пытается определить окрестности кластеров с заданной плотность. Алгоритм может обнаруживать в данных кластеры любой формы, размера и плотности, также может различать точки данных входящие в кластер и точки которые нужно пометить как шум. Алгоритм не итеративный, он выращивает кластеры за один проход
+
+Алгоритм особенно полезен при работе с зашумленным набором данных или выбросами или когда количество кластеров в наборе данных неизвестно. Алгоритм выявляет связанные области с относительно высокой плотностью
+
+Работа алгоритма DBSCAN:
+1) Для набора данных точек сначала выбирается
+- желаемое минимальное количество точек n которое хотим включить в окрестность
+- радиус каждой окрестности
+2) Прорабатывая каждую точку в наборе данных относим ее к одному из типов
+- центральная точка
+- пограничная точка
+
+**HDBSCAN** - это вариант DBSCAN не требующий настройки набора параметров, что делает его еще более гибким. Алгоритм также менее чувствителен к шуму и выбросам (использует стабилизацию кластера). Это приводит к созданию более надежных и значимых кластеров
+
+Работа HDBSCAN:
+1) Идентифицирует каждую точку как отдельный кластер
+2) Постепенно объединяет кластеры в иерархию постепенно снижая пороговое значение плотности
+3) Создается иерархическое дерево, которое упрощается до конденсированного дерева в котором хранятся только самые стабильные кластеры с разным уровнем плотности
+
+Практика:
+~~~Python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import DBSCAN
+import hdbscan
+from sklearn.preprocessing import StandardScaler
+
+# geographical tools
+import geopandas as gpd
+import contextily as ctx
+from shapely.geometry import Point
+
+import warnings
+warnings.filterwarnings('ignore')
+
+#Скачиваем карту канады
+import requests
+import zipfile
+import io
+import os
+
+zip_file_url = 'https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/YcUk-ytgrPkmvZAh5bf7zA/Canada.zip'
+output_dir = './'
+os.makedirs(output_dir, exist_ok=True)
+
+response = requests.get(zip_file_url)
+response.raise_for_status()
+
+with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+    for file_name in zip_ref.namelist():
+        if file_name.endswith('.tif'):
+            zip_ref.extract(file_name, output_dir)
+            print(f"Downloaded and extracted: {file_name}")
+
+#Функция построения графиков
+def plot_clustered_locations(df, title='Museums Clustered by Proximity'):
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['Longitude'], df['Latitude']), crs="EPSG:4326")
+    gdf = gdf.to_crs(epsg=3857)
+    fig, ax = plt.subplots(figsize=(15, 10))
+
+    non_noise = gdf[gdf['Cluster'] != -1]
+    noise = gdf[gdf['Cluster'] == -1]
+
+    noise.plot(ax=ax, color='k', markersize=30, ec='r', alpha=1, label='Noise')
+    non_noise.plot(ax=ax, column='Cluster', cmap='tab10', markersize=30, ec='k', legend=False, alpha=0.6)
+    ctx.add_basemap(ax, source='./Canada.tif', zoom=4)
+
+    plt.title(title, )
+    plt.xlabel('Longitude', )
+    plt.ylabel('Latitude', )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.tight_layout()
+    plt.show()
+
+#Исследуем набор данных
+url = 'https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/r-maSj5Yegvw2sJraT15FA/ODCAF-v1-0.csv'
+df = pd.read_csv(url, encoding = "ISO-8859-1")
+df.head()
+
+df.ODCAF_Facility_Type.value_counts()
+df = df[df.ODCAF_Facility_Type == 'museum']
+df.ODCAF_Facility_Type.value_counts()
+df = df[['Latitude', 'Longitude']]
+df.info()
+
+df = df[df.Latitude!='..']
+df[['Latitude','Longitude']] = df[['Latitude','Longitude']].astype('float')
+
+#Построение модели DBSCAN
+coords_scaled = df.copy()
+coords_scaled["Latitude"] = 2*coords_scaled["Latitude"]
+
+min_samples=3
+eps=1.0
+metric='euclidean'
+dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=metric).fit(coords_scaled)
+
+df['Cluster'] = dbscan.fit_predict(coords_scaled)
+df['Cluster'].value_counts()
+
+plot_clustered_locations(df, title='Museums Clustered by Proximity')
+
+#Построение модели HDBSCAN
+min_samples=None
+min_cluster_size=3
+hdb = hdbscan.HDBSCAN(min_samples=min_samples, min_cluster_size=min_cluster_size, metric='euclidean')
+
+df['Cluster'] = hdb.fit_predict(coords_scaled)
+df['Cluster'].value_counts()
+
+plot_clustered_locations(df, title='Museums Hierarchically Clustered by Proximity')
+~~~
