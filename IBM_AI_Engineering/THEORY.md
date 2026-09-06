@@ -1179,3 +1179,179 @@ df['Cluster'].value_counts()
 
 plot_clustered_locations(df, title='Museums Hierarchically Clustered by Proximity')
 ~~~
+
+### Кластеризация, уменьшение размерности и обработка признаков  
+**Кластеризация, уменьшение размерности и проектирование функций** - это взаимодействующие методы ML и обработки данных. Они хорошо работают вместе, повышая производительность, качество и интерпретируемость модели. Используютс для подготовки данных перед обучением моделей  
+
+Кластеризация - это способ группировать похожие объекты вместе (как если бы выполняли сортировку объектов по цвету). Помогает выбирать и создавать функции, одновременно уменьшая размерность для пвышения вычислительной эффективности и масштабируемости  
+
+Уменьшение размерности - способ упрощения сложных данных с большим количеством признаков (или измерений), чтобы сделать их легче анализируемыми и визуализируемыми. Помогает сжеть данные, но сохранить их суть и сделать процесс кластеризации более точным и быстрым Урощает визуализацию многомерной кластеризации, помогает проектировать функции и повышает качество модели, также уменьшает количество функций, необходимых для модели данных. Обычно используется в качестве этапа предварительной обработки для кластеризации, упрощения структур данных и улучшения результатов  
+
+Данные большой размерности создают проблемы для алгоритмов кластеризации на основе расстояний (k-means и DBSCAN): по мере увеличения размерности объем быстро увеличивается, в результате чего токи становятся разреженными и менее похожими, что приводит к уменьшению количества кластеров  
+
+Методы уменьшения размерности (применяются перед применением алгоритмов кластеризации):  
+1) PCA - алгоритм анализа главнох компанентов  
+2) t-SNE - алгоритм T-распределенного стохастического встраивания соседей  
+3) UMAP - алгоритм аппроксимации и проецирования однородных многообразий  
+
+Обработка признаков - процесс создания новых признаков из уже существующих, чтобы модель   лучше улавливала закономерности  
+
+Методы обработки признаков:  
+1) Масштабирование - приводит признаки к одному масштабу (StandardScaler, MinMaxScaler)  
+2) Кодирование категорий - превращает текст в числа (OneHotEncoder, LabelEncoder)  
+3) Создание новых признаков - комбинирует существующие (income / age - доход на возраст)  
+4) Работа с пропусками - заполняет или удаляет пустые значения (fillna (median), dropna())  
+5) Извлечение признаков - извлекает признак из сложных данных (из даты - день)  
+
+Алгоритм обработки данных:  
+1) Обработка признаков (чистит и преобразует данные)  
+- удаляем пропуски  
+- кодируем категории  
+- масштабируем числа  
+- создаем новые признаки  
+2) Уменьшение размерности (сокращает число признаков)  
+- удаляем малоинформативные признаки  
+- применяем PCA для сжатия  
+- визуализируем через t-SNE  
+3) Класстеризация (находит группы объектов)  
+- находим группы похожих обектов  
+- используем результат кластеризации как новый признак  
+
+
+### Алгоритмы уменьшения размерности
+Алгоритмы уменьшения рамерности уменьшают количество объектов набора данных без ущерба для важной информации в наборе данных. Данные алгоритмы упрощают многомерные данные для моделей машинного обучения, анализа и визуализации Алгоритмы *анализа главных компонентов (PCA), T-распределенного стохастического встраивания соседей (t-SNE) и аппроксимации и проецирования однородных многообазий (UMAP)* преобразуют исходные размеры для создания новых объектов  
+
+PCA (Principal Component Analysis) - алгоритм линейного уменьшения размерности предполагающий линейную корреляцию объектов набора данных. Упрощает данные, уменьшает размерностб и снижает уровень шума. Может преобразовывать объъекты в новый набор некоррелируемых переменных (основные компоненты), сохраня при этом как можно большую дисперсию. Основные компоненты ортогональны и организованы в порядке убывания важности или степени объяснения дисперсии простых признаков  
+
+t-SNE (T-Distributed Stochastic Neighbor Embedding) - сопоставляет точки данных большой размерности с пространством меньшей размерности. Подходит для поиска кластеров в сложных многоменрных данных, которые можно визуализировать в двух или трех измерениях и хорошо раоботает с такими данными как изображения и текст. Алгоритм фокуусируется на сохранении сходства точек расположенных близко друг к другу и в меньшей степени на удаленных точках. Сходство измеряется как расстояние между точками. Алгоритм ПЛОХО масштабируется и его трудно настроить  
+
+UMAP - алгоритм нелинеййного уменьшения размерности, используется в качестве альтернативы t-SNE. Строит многомерное графическое представление данных на основе теории многообразия. Оптимизирует низкоразмерну графическу структуру, которая наилучшим образом сохраняет отношение между точками в исходных данных  
+
+Практика: применения алгоритма PCA  
+~~~Python
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn import datasets
+from sklearn.preprocessing import StandardScaler
+
+#Создаем 2-мерный набор данных содержащий 2 коррелируемых признака
+np.random.seed(42)
+mean = [0, 0]
+cov = [[3, 2], [2, 2]]
+X = np.random.multivariate_normal(mean=mean, cov=cov, size=200)
+
+#Визуализируем взаимосвязь между особенностями используя схему разброса
+plt.figure()
+plt.scatter(X[:, 0], X[:, 1],  edgecolor='k', alpha=0.7)
+plt.title("Scatter Plot of Bivariate Normal Distribution")
+plt.xlabel("X1")
+plt.ylabel("X2")
+plt.axis('equal')
+plt.grid(True)
+plt.show()
+
+#Выполняем PCA на наборе
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X)
+
+#Получаем основные компоненты
+components = pca.components_
+print(components)
+print(pca.explained_variance_ratio_) #Первый компонент объясняет 91% дисперсии в данных, второй компонент 8.8%
+
+#Проецируем данные на основные оси
+projection_pc1 = np.dot(X, components[0])
+projection_pc2 = np.dot(X, components[1])
+x_pc1 = projection_pc1 * components[0][0]
+y_pc1 = projection_pc1 * components[0][1]
+x_pc2 = projection_pc2 * components[1][0]
+y_pc2 = projection_pc2 * components[1][1]
+
+plt.figure()
+plt.scatter(X[:, 0], X[:, 1], label='Original Data', ec='k', s=50, alpha=0.6)
+plt.scatter(x_pc1, y_pc1, c='r', ec='k', marker='X', s=70, alpha=0.5, label='Projection onto PC 1')
+plt.scatter(x_pc2, y_pc2, c='b', ec='k', marker='X', s=70, alpha=0.5, label='Projection onto PC 2')
+plt.title('Linearly Correlated Data Projected onto Principal Components', )
+plt.xlabel('Feature 1',)
+plt.ylabel('Feature 2',)
+plt.legend()
+plt.grid(True)
+plt.axis('equal')
+plt.show()
+
+#Упражнение 2
+#PCA для уменьшения размерности пространства функции
+#Загруска и процессирование данных
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+target_names = iris.target_names
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+iris.target_names
+
+#Инициализируем PCA и уменьшаем размерность набора данных iris до 2 компонент
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(8,6))
+colors = ['navy', 'turquoise', 'darkorange']
+lw = 1
+
+for color, i, target_name in zip(colors, [0, 1, 2], target_names):
+    plt.scatter(X_pca[y == i, 0], X_pca[y == i, 1], color=color, s=50, ec='k',alpha=0.7, lw=lw,
+                label=target_name)
+
+plt.title('PCA 2-dimensional reduction of IRIS dataset',)
+plt.xlabel("PC1",)
+plt.ylabel("PC2",)
+plt.legend(loc='best', shadow=False, scatterpoints=1,)
+plt.show()
+
+100*pca.explained_variance_ratio_.sum()
+
+#Повторная инициализация PCA без уменьшения размера
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+pca = PCA()
+X_pca = pca.fit_transform(X_scaled)
+
+explained_variance_ratio = pca.explained_variance_ratio_
+
+plt.figure(figsize=(10,6))
+plt.bar(x=range(1, len(explained_variance_ratio)+1), height=explained_variance_ratio, alpha=1, align='center', label='PC explained variance ratio' )
+plt.ylabel('Explained Variance Ratio')
+plt.xlabel('Principal Components')
+plt.title('Explained Variance by Principal Components')
+
+cumulative_variance = np.cumsum(explained_variance_ratio)
+plt.step(range(1, 5), cumulative_variance, where='mid', linestyle='--', lw=3,color='red', label='Cumulative Explained Variance')
+plt.xticks(range(1, 5))
+plt.legend()
+plt.grid(True)
+plt.show()
+~~~
+
+Практика: реализация алгоритмов t-SNA и UMAP, сравнение реультатов при помощи PCA   
+~~~Python
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+
+fig = plt.figure(figsize=(8, 6))
+
+# Plot the 2D PCA result (right)
+ax2 = fig.add_subplot(111)
+scatter2 = ax2.scatter(X_pca[:, 0], X_pca[:, 1], c=labels_, cmap='viridis', s=50, alpha=0.7, edgecolor='k')
+ax2.set_title("2D PCA Projection of 3-D Data")
+ax2.set_xlabel("PCA 1")
+ax2.set_ylabel("PCA 2")
+ax2.set_xticks([])
+ax2.set_yticks([])
+plt.show()
+~~~
+
