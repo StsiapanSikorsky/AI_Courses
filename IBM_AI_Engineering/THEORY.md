@@ -20,6 +20,9 @@
 [   - кластеризация DBSCAN и HDBSCAN  ](#title18)  
 [   - кластеризация, уменьшение размерности и обработка признаков  ](#title19)  
 [   - алгоритмы уменьшения размерности  ](#title20)  
+[Оценка и проверка моделей ML](#title21)  
+[   - метрики классификации и методы оценки  ](#title22)  
+[   - метрики регрессии и методы оценки  ](#title23)  
 
 
 
@@ -1360,6 +1363,218 @@ ax2.set_xlabel("PCA 1")
 ax2.set_ylabel("PCA 2")
 ax2.set_xticks([])
 ax2.set_yticks([])
+plt.show()
+~~~
+
+## <a id="title21">▶️Оценка и проверка моделей ML </a>
+### <a id="title22">Метрики классификации и методы оценки </a>
+Оценка контролируемого обучения показывает, насколько хорошо модель ML может прогнозировать результаты невидимых данных. В процессе обучения модель пытается оптимизировать прогнозы на основе одной или нескольких оценочных метрик. После обучения модель снова оценивается, чтобы оценить насколько хорошо она может быть обобщена на невидимые данные. Контролируемая оценка обучения необходима как на этапе обучения, так и на этапе тестирования
+
+Техника train-test-split: набор данных разделяется на две части, обучающий и тестовый. Обучающий набор используется непосредственно для обучения модели, тестовое подмножество используется для оценки того, на сколько хорошо модель обобщается на новые невидимые данные
+
+В задачах классификации модель прогнозирует категориальные метки, чтобы оценить на сколько эти прогнозы соответствуют реальным меткам
+
+Общие метрики для оценки классификации:
+1) Доля правильных ответов - отношение правильно предсказанных экземпляров к общему количеству
+2) Матрица путаницы - таблица в которой количество основных экземпляров определенного класса сопоставляется с количеством предсказанных экземпляров класса
+3) Точность - измеряет сколько из прогнозируемых положительных случаев на самом деле являются положительными (важно для систем рекомендации)
+4) Отзывчивость - показывает сколько реально положительных случаев было правильно предсказано
+5) Оценка F1 - сбалансированное сочетание точности и отзывчивости, отражающие точность модели
+
+Если точность на обучающих данных выше чем на тестовых, это свидетельствует о переобученности модели
+
+Практика: оценка классификационх моделей для предсказания рака молочной железы
+~~~Python
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.datasets import load_breast_cancer
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+#Загружаем набор данных
+data = load_breast_cancer()
+X, y = data.data, data.target
+labels = data.target_names
+feature_names = data.feature_names
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+#Добавляем шум в набор данных
+np.random.seed(42)
+noise_factor = 0.5
+X_noisy = X_scaled + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=X.shape)
+
+df = pd.DataFrame(X_scaled, columns=feature_names)
+df_noisy = pd.DataFrame(X_noisy, columns=feature_names)
+
+print("Original Data (First 5 rows):")
+df.head()
+print("\nNoisy Data (First 5 rows):")
+df_noisy.head()
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.hist(df[feature_names[5]], bins=20, alpha=0.7, color='blue', label='Original')
+plt.title('Original Feature Distribution')
+plt.xlabel(feature_names[5])
+plt.ylabel('Frequency')
+
+plt.subplot(1, 2, 2)
+plt.hist(df_noisy[feature_names[5]], bins=20, alpha=0.7, color='red', label='Noisy')
+plt.title('Noisy Feature Distribution')
+plt.xlabel(feature_names[5])
+plt.ylabel('Frequency')
+
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(12, 6))
+plt.plot(df[feature_names[5]], label='Original',lw=3)
+plt.plot(df_noisy[feature_names[5]], '--',label='Noisy',)
+plt.title('Scaled feature comparison with and without noise')
+plt.xlabel(feature_names[5])
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+#Обучаем модели KNN и SVM
+X_train, X_test, y_train, y_test = train_test_split(X_noisy, y, test_size=0.3, random_state=42)
+
+knn = KNeighborsClassifier(n_neighbors=5)
+svm = SVC(kernel='linear', C=1, random_state=42)
+
+knn.fit(X_train, y_train)
+svm.fit(X_train, y_train)
+
+#Оценка модели
+y_pred_knn = knn.predict(X_test)
+y_pred_svm = svm.predict(X_test)
+
+#Выводим оценки точности и отчетты о классификации
+print(f"KNN Testing Accuracy: {accuracy_score(y_test, y_pred_knn):.3f}")
+print(f"SVM Testing Accuracy: {accuracy_score(y_test, y_pred_svm):.3f}")
+
+print("\nKNN Testing Data Classification Report:")
+print(classification_report(y_test, y_pred_knn))
+
+print("\nSVM Testing Data Classification Report:")
+print(classification_report(y_test, y_pred_svm))
+
+#Записываем матрицу путаницы
+conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
+conf_matrix_svm = confusion_matrix(y_test, y_pred_svm)
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+sns.heatmap(conf_matrix_knn, annot=True, cmap='Blues', fmt='d', ax=axes[0],
+            xticklabels=labels, yticklabels=labels)
+
+axes[0].set_title('KNN Testing Confusion Matrix')
+axes[0].set_xlabel('Predicted')
+axes[0].set_ylabel('Actual')
+
+sns.heatmap(conf_matrix_svm, annot=True, cmap='Blues', fmt='d', ax=axes[1],
+            xticklabels=labels, yticklabels=labels)
+axes[1].set_title('SVM Testing Confusion Matrix')
+axes[1].set_xlabel('Predicted')
+axes[1].set_ylabel('Actual')
+
+plt.tight_layout()
+plt.show()
+~~~
+
+### <a id="title23">Метрики регрессии и методы оценки </a>
+Регрессионные модели не являются надежными и часто допускают ошибки в прогнозах. Прогнозирование регрессионной модели предполагает определение того, насколько точно модель может прогнозировать непрерывные числовые значения
+
+Ошибка - прогнозируемое значение (как на графике) минус фактическое значение (положение точки). Т.е. это мера разницы между точками данных и линией тренда созданной алгоритмом
+
+Метрики регрессии позволяют получать представление о производительности модели, например ее точности, распределении ошибок и величене ошибок
+
+Общие метрики для оценки регрессии:
+1) Средняя абсолютная ошибка (MAE) - средняя абсолютная разница между значениями установленными моделью и наблюдаемыми историческими данными
+2) Среднеквадратичная ошибка (MSE) - сумма квадратичной разницы между значениями, установленными моделью и наблюдаемыми значениями, деленную на количество данных точек
+3) Среднеквадратичная ошибка (RMSE) - это квадратный корень из MSE. Измеряется в тех же единицах, что и целевая переменная
+4) R^2 - коэффициент децермации, это величина дисперсии зависимой переменной, которую может объяснить независимая переменная, измеряет степень посадки модели. Измеряется от 0 до 1, где 0 - плохая модель, 1 - идеальная модель. Отрицательное значение означает что модель работает настолько плохо, что необъяснимая дисперсия превышает общую дисперсию. Метрика предполагает, что цель линейно связана с входными объектами
+
+Практика: оценка модели RandomForest для предсказания цены дома на основе разных атрибутов
+~~~Python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, root_mean_squared_error, mean_absolute_error, r2_score
+from scipy.stats import skew
+
+data = fetch_california_housing()
+X, y = data.data, data.target
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+eda = pd.DataFrame(data=X_train)
+eda.columns = data.feature_names
+eda['MedHouseVal'] = y_train
+eda.describe()
+
+plt.hist(1e5*y_train, bins=30, color='lightblue', edgecolor='black')
+plt.title(f'Median House Value Distribution\nSkewness: {skew(y_train):.2f}')
+plt.xlabel('Median House Value')
+plt.ylabel('Frequency')
+
+rf_regressor = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_regressor.fit(X_train, y_train)
+y_pred_test = rf_regressor.predict(X_test)
+
+mae = mean_absolute_error(y_test, y_pred_test)
+mse = mean_squared_error(y_test, y_pred_test)
+rmse = root_mean_squared_error(y_test, y_pred_test)
+r2 = r2_score(y_test, y_pred_test)
+print(f"Mean Absolute Error (MAE): {mae:.4f}")
+print(f"Mean Squared Error (MSE): {mse:.4f}")
+print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+print(f"R² Score: {r2:.4f}")
+
+
+plt.scatter(y_test, y_pred_test, alpha=0.5, color="blue")
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
+plt.xlabel("Actual Values")
+plt.ylabel("Predicted Values")
+plt.title("Random Forest Regression - Actual vs Predicted")
+plt.show()
+
+residuals = 1e5*(y_test - y_pred_test)
+plt.hist(residuals, bins=30, color='lightblue', edgecolor='black')
+plt.title(f'Median House Value Prediction Residuals')
+plt.xlabel('Median House Value Prediction Error ($)')
+plt.ylabel('Frequency')
+print('Average error = ' + str(int(np.mean(residuals))))
+print('Standard deviation of error = ' + str(int(np.std(residuals))))
+
+residuals_df = pd.DataFrame({
+    'Actual': 1e5*y_test,
+    'Residuals': residuals
+})
+residuals_df = residuals_df.sort_values(by='Actual')
+plt.scatter(residuals_df['Actual'], residuals_df['Residuals'], marker='o', alpha=0.4,ec='k')
+plt.title('Median House Value Prediciton Residuals Ordered by Actual Median Prices')
+plt.xlabel('Actual Values (Sorted)')
+plt.ylabel('Residuals')
+plt.grid(True)
+plt.show()
+
+importances = rf_regressor.feature_importances_
+indices = np.argsort(importances)[::-1]
+features = data.feature_names
+plt.bar(range(X.shape[1]), importances[indices],  align="center")
+plt.xticks(range(X.shape[1]), [features[i] for i in indices], rotation=45)
+plt.xlabel("Feature")
+plt.ylabel("Importance")
+plt.title("Feature Importances in Random Forest Regression")
 plt.show()
 ~~~
 
