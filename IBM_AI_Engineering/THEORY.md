@@ -25,6 +25,7 @@
 [   - метрики регрессии и методы оценки  ](#title23)  
 [   - оценка моделей неконтролируемого обучения. Эвристики и методы  ](#title24)  
 [   - перекрестная валидация и расширенные методы проверки моделей  ](#title25)  
+[   - регулизация в линейной рекрессии  ](#title26)   
 
 
 
@@ -1931,8 +1932,216 @@ Stratified K-Fold (K=5):
 Случайный перебор гиперпараметров, вместо всех комбинаций пробует заданное количество случайных комбинаций, но не гарантирует оптимум
 
 
+### <a id="title26">Регулизация в линейной регрессии </a>
+Линейная регрессия ищет коэффициенты минимизирующие ошибку, но если модель переобучена или признаки мультиколлинеарны
+
+**Регулизация** - метод регрессии направленный на предотвращение предотвращение черезмерного соответствие обучающим данным путем путем добавления штрафа к функции потерь модели за слишком большие коэффициенты. Регулизация позволяет достичь своих целей путемм подавления размера коэффициентов используя модифицированную функцию стоимости, является обязательным инструментом при работе с линейными моделями, это страховка от плохих данных с выбросами
+
+Форула ошибки обычной линейной регрессии:
+> Loss=i=1∑n​(yi​—y^​i​)2
+
+Формула с регулизацией
+> Loss=i=1∑n​(yi​—y^​i​)2+λ⋅штраф
+> где:
+> λ - параметр контролирующий влияние срока штрафа (сила регуляризации)
+> штрафной член - измеряет размер коэффициентов (зависит от типа регулязации)
+
+#### Методы регуляризованной регрессии:
+##### 1) Регуляция гребня (Ride Regression - L2 регулязация)
+Добавляет штраф равной сумме кваратов коэффициентов. Уменьшает коэффициенты, но не зануляет их, все признаки остаются в модели, но их влияние становится меньше.
+Используется когда:
+- модель переобучена
+- много признаков, но все важны
+- признаки коррелируют
+
+Использование:
+~~~Python
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_squared_error, r2_score
+
+# Ridge Regression
+ridge = Ridge(alpha=1.0)  # alpha = λ
+ridge.fit(X_train, y_train)
+y_pred = ridge.predict(X_test)
+
+print(f"Коэффициенты: {ridge.coef_}")
+print(f"R²: {r2_score(y_test, y_pred):.4f}")
+~~~
+
+##### 2) Регуляция лассо  (Lasso regression - L1 регуляризация) 
+Добавляет штраф, равный сумме мдулей коэффициентов. Зануляет некоторые коэффициенты, модель становится разреженной
+Используется когда:
+- много признаков но не все важны
+- нужен автоматический отбор признаков
+
+Использование:
+~~~Python
+from sklearn.linear_model import Lasso
+
+# Lasso Regression
+lasso = Lasso(alpha=0.1)  # alpha = λ
+lasso.fit(X_train, y_train)
+y_pred = lasso.predict(X_test)
+
+print(f"Коэффициенты: {lasso.coef_}")
+print(f"Количество ненулевых: {sum(lasso.coef_ != 0)}")
+print(f"R²: {r2_score(y_test, y_pred):.4f}")
+~~~
+
+#### Практика: оценка трех методов регулизации
+~~~Python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, r2_score
+
+#Функция для отображения показателей модели
+def regression_results(y_true, y_pred, regr_type):
+    # Regression metrics
+    ev = explained_variance_score(y_true, y_pred)
+    mae = mean_absolute_error(y_true, y_pred)
+    mse = mean_squared_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+
+    print('Evaluation metrics for ' + regr_type + ' Linear Regression')
+    print('explained_variance: ', round(ev, 4))
+    print('r2: ', round(r2, 4))
+    print('MAE: ', round(mae, 4))
+    print('MSE: ', round(mse, 4))
+    print('RMSE: ', round(np.sqrt(mse), 4))
+    print()
+
+#Создаем набор данных с линейной зависимостью и добавлением шума
+noise=1
+np.random.seed(42)
+X = 2 * np.random.rand(1000, 1)
+y = 4 + 3 * X + noise*np.random.randn(1000, 1)
+y_ideal =  4 + 3 * X
+y_outlier = pd.Series(y.reshape(-1).copy())
+
+threshold = 1.5
+outlier_indices = np.where(X.flatten() > threshold)[0]
+
+num_outliers = 5
+selected_indices = np.random.choice(outlier_indices, num_outliers, replace=False)
+y_outlier[selected_indices] += np.random.uniform(50, 100, num_outliers)
+
+plt.figure(figsize=(12, 6))
+
+plt.scatter(X, y_outlier, alpha=0.4,ec='k', label='Original Data with Outliers')
+plt.plot(X, y_ideal,  linewidth=3, color='g',label='Ideal, noise free data')
+plt.xlabel('Feature (X)')
+plt.ylabel('Target (y)')
+plt.title('')
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(12, 6))
+plt.scatter(X, y, alpha=0.4,ec='k', label='Original Data without Outliers')
+plt.plot(X, y_ideal,  linewidth=4, color='g',label='Ideal, noise free data')
+plt.xlabel('Feature (X)')
+plt.ylabel('Target (y)')
+plt.title('')
+plt.legend()
+plt.show()
+
+#Модели регрессии с разными методами регулизации
+# Fit a simple linear regression model
+lin_reg = LinearRegression()
+lin_reg.fit(X, y_outlier)
+y_outlier_pred_lin = lin_reg.predict(X)
+
+# Fit a ridge regression model (regularization to control large coefficients)
+ridge_reg = Ridge(alpha=1)
+ridge_reg.fit(X, y_outlier)
+y_outlier_pred_ridge = ridge_reg.predict(X)
+
+# Fit a lasso regression model (regularization to control large coefficients)
+lasso_reg = Lasso(alpha=.2)
+lasso_reg.fit(X, y_outlier)
+y_outlier_pred_lasso = lasso_reg.predict(X)
+
+regression_results(y, y_outlier_pred_lin, 'Ordinary')
+regression_results(y, y_outlier_pred_ridge, 'Ridge')
+regression_results(y, y_outlier_pred_lasso, 'Lasso')
+
+plt.figure(figsize=(12, 6))
+plt.scatter(X, y, alpha=0.4,ec='k', label='Original Data')
+plt.plot(X, y_ideal,  linewidth=2, color='k',label='Ideal, noise free data')
+plt.plot(X, y_outlier_pred_lin,  linewidth=5, label='Linear Regression')
+plt.plot(X, y_outlier_pred_ridge, linestyle='--', linewidth=2, label='Ridge Regression')
+plt.plot(X, y_outlier_pred_lasso,  linewidth=2, label='Lasso Regression')
+plt.xlabel('Feature (X)')
+plt.ylabel('Target (y)')
+plt.title('Comparison of Predictions with Outliers')
+plt.legend()
+plt.show()
+
+# Fit a simple linear regression model
+lin_reg = LinearRegression()
+lin_reg.fit(X, y)
+y_pred_lin = lin_reg.predict(X)
+
+# Fit a ridge regression model (regularization to control large coefficients)
+ridge_reg = Ridge(alpha=1)
+ridge_reg.fit(X, y)
+y_pred_ridge = ridge_reg.predict(X)
+
+# Fit a lasso regression model (regularization to control large coefficients)
+lasso_reg = Lasso(alpha=0.2)
+lasso_reg.fit(X, y)
+y_pred_lasso = lasso_reg.predict(X)
+
+# Print the regression results
+regression_results(y, y_pred_lin, 'Ordinary')
+regression_results(y, y_pred_ridge, 'Ridge')
+regression_results(y, y_pred_lasso, 'Lasso')
 
 
+plt.figure(figsize=(12, 8))
+plt.scatter(X, y, alpha=0.4,ec='k', label='Original Data')
+plt.plot(X, y_ideal,  linewidth=2, color='k',label='Ideal, noise free data')
+plt.plot(X, y_pred_lin,  linewidth=5, label='Linear Regression')
+plt.plot(X, y_pred_ridge, linestyle='--',linewidth=2, label='Ridge Regression')
+plt.plot(X, y_pred_lasso,  linewidth=2, label='Lasso Regression')
+plt.xlabel('Feature (X)')
+plt.ylabel('Target (y)')
+plt.title('Comparison of predictions with no outliers')
+plt.legend()
+plt.show()
+
+#Исключая выбросы
+lin_reg = LinearRegression()
+lin_reg.fit(X, y)
+y_pred_lin = lin_reg.predict(X)
+
+ridge_reg = Ridge(alpha=1)
+ridge_reg.fit(X, y)
+y_pred_ridge = ridge_reg.predict(X)
+
+lasso_reg = Lasso(alpha=0.2)
+lasso_reg.fit(X, y)
+y_pred_lasso = lasso_reg.predict(X)
+
+regression_results(y, y_pred_lin, 'Ordinary')
+regression_results(y, y_pred_ridge, 'Ridge')
+regression_results(y, y_pred_lasso, 'Lasso')
+
+plt.figure(figsize=(12, 8))
+plt.scatter(X, y, alpha=0.4,ec='k', label='Original Data')
+plt.plot(X, y_ideal,  linewidth=2, color='k',label='Ideal, noise free data')
+plt.plot(X, y_pred_lin,  linewidth=5, label='Linear Regression')
+plt.plot(X, y_pred_ridge, linestyle='--',linewidth=2, label='Ridge Regression')
+plt.plot(X, y_pred_lasso,  linewidth=2, label='Lasso Regression')
+plt.xlabel('Feature (X)')
+plt.ylabel('Target (y)')
+# plt.ylim((0,20))
+plt.title('Comparison of predictions with no outliers')
+plt.legend()
+plt.show()
+~~~
 
 
 
