@@ -26,6 +26,7 @@
 [   - оценка моделей неконтролируемого обучения. Эвристики и методы  ](#title24)  
 [   - перекрестная валидация и расширенные методы проверки моделей  ](#title25)  
 [   - регулизация в линейной рекрессии  ](#title26)   
+[   - утечка данных и другие подводные камни  ](#title27)   
 
 
 
@@ -2140,6 +2141,127 @@ plt.ylabel('Target (y)')
 # plt.ylim((0,20))
 plt.title('Comparison of predictions with no outliers')
 plt.legend()
+plt.show()
+~~~
+
+### <a id="title27">Утечка данных и другие подводные камни </a>
+**Утечка данных** - ситуация когда информация из тестовой выборки или будущего попадает в обучающую выборку, модель подсматривает ответы и завышает результаты
+
+Утечка данных вводит модель в заблуждение и приводит к тому, что во время обучения и проверки она работает вводящим в заблуждение. Поскольку тестовые данные также содержат утечки, оценка не позволит выявить плохую обобщаемость пока модель не будет внедрена в продакшен
+
+#### Классические примеры утечки данных:
+1) Масштабирование до разделения
+2) Отбор признаков (рассчет корреляции) до разделения
+3) Подсчет среднего по всем данным до разделения
+4) Дубликаты в train и test
+5) Обучение на будущем для предсказания прошлого
+
+Лучшим способом считается установка пайплайна (автоматически избегаем утечки):
+~~~Python
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+
+# Pipeline гарантирует, что fit происходит только на train
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('model', LogisticRegression())
+])
+
+pipeline.fit(X_train, y_train)  # Всё внутри fit
+y_pred = pipeline.predict(X_test)
+~~~
+
+Установка пайплайна автоматически применяет *fit* на train, а *transform* на test. Также обеспечивается комплексная перекрестная проверка и настройка гиперпараметров для всех этапов одновременно. Они гарантируют что такие этапы как *масштабирование, кодирование категориальных пременных, вменение недостающих значений и снижение размерности* применяются как к тренировочны, так и к тестовым данным
+
+Практика: построение пайплайна, его оценка с моделью GridSearchCV
+~~~Python
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+
+#Загружаем набор данных Iris
+data = load_iris()
+X, y = data.data, data.target
+labels = data.target_names
+
+#Устанавливаем пайплайн
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('pca', PCA(n_components=2),),
+    ('knn', KNeighborsClassifier(n_neighbors=5,))
+])
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+#Помещаем пайплайн на тренировочный набор
+pipeline.fit(X_train, y_train)
+test_score = pipeline.score(X_test, y_test)
+print(f"{test_score:.3f}")
+
+#Создаем матрицу путаницы для KNN
+y_pred = pipeline.predict(X_test)
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d',
+            xticklabels=labels, yticklabels=labels)
+plt.title('Classification Pipeline Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.tight_layout()
+plt.show()
+
+#Устанавливаем пайплайн без спец параметров
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('pca', PCA()),
+    ('knn', KNeighborsClassifier())
+])
+
+#Определяем сетку параметров (ЧЕРЕЗ ДВА АНДЕРСКОРА)
+param_grid = {
+    'pca__n_components': [2, 3],
+    'knn__n_neighbors': [3, 5, 7]
+}
+
+#Выбираем метод перекрестной проверки
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+#Выбираем лучшую модель
+best_model = GridSearchCV(estimator=pipeline,
+                          param_grid=param_grid,
+                          cv=cv,
+                          scoring='accuracy',
+                          verbose=2
+                         )
+
+best_model.fit(X_train, y_train)
+
+#Оцениваем точность лучшей модели
+test_score = best_model.score(X_test, y_test)
+print(f"{test_score:.3f}")
+
+#Отображаем параметры лучшей модели
+best_model.best_params_
+
+#Строим матрицу путаницы для лучшей модели
+y_pred = best_model.predict(X_test)
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d',
+            xticklabels=labels, yticklabels=labels)
+plt.title('KNN Classification Testing Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.tight_layout()
 plt.show()
 ~~~
 
