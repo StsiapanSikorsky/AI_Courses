@@ -28,6 +28,8 @@
 [   - регулизация в линейной рекрессии  ](#title26)   
 [   - утечка данных и другие подводные камни  ](#title27)   
 
+[Итоговая практика](#title30) 
+[   - прогнозирование выживаемости на титанике  ](#title31)  
 
 
 **Модель** - это матрицы чисел которые при размышлении перемножаются между собой, умножение осуществляет GPU видеокарты. Для корректной работы модели вся она целиком должна вместиться в VRAM (память видеокарты). Также каждый контекст разговора включается как KV-cache в VRAM, из-за этого чем длиннее разговор, тем больше нужно памяти VRAM   
@@ -2354,8 +2356,234 @@ plt.tight_layout()
 plt.show()
 ~~~
 
+## <a id="title30">▶️Итоговая практика </a>  
+### <a id="title31">Прогнозирование выживаемости на титанике </a>
+Цель: предсказание выживет ли пассажир на титанике на основе его характеристик
+
+Выполнено обучение двух моделей:
+- Ансымбль деревьев (RandomForest)
+- Логистическая регрессия (LogisticRegression)
+
+Выполнение:
+- автоматическое деление признаков на числовые и категориальные
+- на каждый тип признаков создаются трансформеры
+- ColumnTransformer применяет разные трансформеры к разным калонкам
+- полный pipeline объединяет препроцессинг и модель
+- при помощи GridSearchCV выбираем оптимальное количество параметров и лучшую модель
+- проведение оценки модели (Precision, Recall, F1)
+- построение графиков: матрицы путаницы и важности признаов
+
+> [!IMPORTANT]
+> Код является шаблоном для любого табличного ML, достаточно сменить данные и модель
+
+~~~Python
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+#Датасет Seaborn
+import seaborn as sns
+#Применяет разные трансформеры к разным калонкам
+from sklearn.compose import ColumnTransformer
+#Заполняет пропуски
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+#Матрица ошибок (стилизованная)
+from sklearn.metrics import classification_report, confusion_matrix
+
+#Загрузка данных из датасета sns
+titanic = sns.load_dataset('titanic')
+titanic.head()
+titanic.count()
+
+#Выбор признаков
+features = ['pclass', 'sex', 'age', 'sibsp', 'parch', 'fare', 'class', 'who', 'adult_male', 'alone']
+target = 'survived'
+
+X = titanic[features]
+y = titanic[target]
+#Проверка баланса классов
+y .value_counts()
+
+#Разделяем данные
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+#Определение типов признаков (результат листы с названиями колонок признаков)
+'''Фундамент любого Pipeline для табличных данных'''
+#Числовые признаки (по дочерям number)
+numerical_features = X_train.select_dtypes(include=['number']).columns.tolist()
+#Категориальны признаки (по object, category)
+categorical_features = X_train.select_dtypes(include=['object', 'category']).columns.tolist()
 
 
+#Создание трансформеров
+'''Imputer - заполняет пропуски медианой/самое частое значение (устойчив к выбросам)'''
+'''Scaler - масштабирование'''
+'''OneHotEncoder - кодирование категорий в бинарные столбцы'''
+'''!После OneHotEncoder имена признаков меняются (class → class_First, class_Second, class_Third)'''
+numerical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())
+])
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
 
+#Колоночный трансформер
+'''Применяет разные трансформаторы к разным калонкам'''
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_features),
+        ('cat', categorical_transformer, categorical_features)
+    ])
+
+#Полный Pipeline
+'''Объединяет препроцессинг и модель в один объект'''
+'''Внутри fit на train, а transform на test (защита от утечек)'''
+pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', RandomForestClassifier(random_state=42))
+])
+
+#Сетка параметров для RandomForest
+param_grid = {
+    'classifier__n_estimators': [50, 100],
+    'classifier__max_depth': [None, 10, 20],
+    'classifier__min_samples_split': [2, 5]
+}
+
+#Кросс валидация (сохранение пропорции классов выж/умер)
+cv = StratifiedKFold(n_splits=5, shuffle=True)
+
+#Автоматичесий перебор комбинаций гиперпараметров с использованием кросс валидации
+'''GridSearchCV - метод проверки модели (медленный, но гарантия лучшего подбора)'''
+model = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2)
+model.fit(X_train, y_train)
+
+#Оценка модели
+y_pred = model.predict(X_test)
+'''Precision, Recall, F1, для каждого класса'''
+print(classification_report(y_test, y_pred))
+
+'''Выводим матрицу путаницы (показывает сколько объектов прав/неправ)'''
+conf_matrix = confusion_matrix(y_test, y_pred)
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d')
+plt.title('Titanic Classification Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.tight_layout()
+plt.show()
+
+#Оценка важности признаков
+'''Извлекаем имена признаков после OneHotEncoder'''
+'''Из лучшей модели достаем preprocessor с которой достаем трансформер cat c которого достаем шаг onehot и получаем массив имен входных признаков'''
+model.best_estimator_['preprocessor'].named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)
+
+'''Получение важности признаков'''
+'''Из лучшей модели достаем classifier (RandomForest) с которого получаем атрибуты'''
+feature_importances = model.best_estimator_['classifier'].feature_importances_
+
+'''Объединяем имена и важности'''
+'''numerical_features - список числовых признаков (не менялся) + list(список категориальных признаков)'''
+'''Порядок признаков как и в ColumnTransformer (1-num, 2-cat)'''
+feature_names = numerical_features + list(model.best_estimator_['preprocessor']
+                                        .named_transformers_['cat']
+                                        .named_steps['onehot']
+                                        .get_feature_names_out(categorical_features))
+
+#Визуализация важности (видим какие признаки важнее всего для предсказания)
+'''Создание DataFrame, таблиа из двух списков: имена признаков, важность. Сортировка по убыванию важности'''
+importance_df = pd.DataFrame({'Feature': feature_names,
+                              'Importance': feature_importances
+                             }).sort_values(by='Importance', ascending=False)
+
+'''Построение графика'''
+plt.figure(figsize=(10, 6))
+plt.barh(importance_df['Feature'], importance_df['Importance'], color='skyblue')
+plt.gca().invert_yaxis()
+plt.title('Most Important Features in predicting whether a passenger survived')
+plt.xlabel('Importance Score')
+plt.show()
+
+'''Оценка модели на независимых тестовых данных'''
+test_score = model.score(X_test, y_test)
+print(f"\nTest set accuracy: {test_score:.2%}")
+
+"""****************************************************************************************************"""
+
+#Смена модели на LogisticRegression
+pipeline.set_params(classifier=LogisticRegression(random_state=42))
+
+'''Устанавливаем pipeline в параметр estimator модли'''
+model.estimator = pipeline
+
+'''Задаем сетку параметров для логистической регрессии'''
+param_grid = {
+    # 'classifier__n_estimators': [50, 100],
+    # 'classifier__max_depth': [None, 10, 20],
+    # 'classifier__min_samples_split': [2, 5],
+    'classifier__solver' : ['liblinear'],
+    'classifier__penalty': ['l1', 'l2'],
+    'classifier__class_weight' : [None, 'balanced']
+}
+
+'''Устанавливаем сетку параметров в параметры модели'''
+model.param_grid = param_grid
+
+'''Тренируем модель логистической регрессии'''
+model.fit(X_train, y_train)
+
+#Оценка модели
+y_pred = model.predict(X_test)
+
+#Строим матрицу путаницы
+conf_matrix = confusion_matrix(y_test, y_pred)
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d')
+plt.title('Titanic Classification Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.tight_layout()
+plt.show()
+
+#Оценка важости признаков
+'''Извлекаем коэффициенты из лучшей модели'''
+coefficients = model.best_estimator_.named_steps['classifier'].coef_[0]
+
+'''Получаем список числовых признаков (просто пересохранение в новую переменную)'''
+numerical_feature_names = numerical_features
+
+'''Получаем список категориальных признаков'''
+categorical_feature_names = (model.best_estimator_.named_steps['preprocessor']
+                                     .named_transformers_['cat']
+                                     .named_steps['onehot']
+                                     .get_feature_names_out(categorical_features)
+                            )
+
+'''Выполняем объединение имен'''
+feature_names = numerical_feature_names + list(categorical_feature_names)
+
+#Визуализируем важность
+importance_df = pd.DataFrame({
+    'Feature': feature_names,
+    'Coefficient': coefficients
+    }).sort_values(by='Coefficient', ascending=False, key=abs)  # Sort by absolute values
+
+'''Визуализация важности'''
+plt.figure(figsize=(10, 6))
+plt.barh(importance_df['Feature'], importance_df['Coefficient'].abs(), color='skyblue')
+plt.gca().invert_yaxis()
+plt.title('Feature Coefficient magnitudes for Logistic Regression model')
+plt.xlabel('Coefficient Magnitude')
+plt.show()
+
+'''Оценка модели на независимых тестовых данных'''
+test_score = model.best_estimator_.score(X_test, y_test)
+print(f"\nTest set accuracy: {test_score:.2%}")
+~~~
 
 
