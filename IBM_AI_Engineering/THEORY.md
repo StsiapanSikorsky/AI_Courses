@@ -30,6 +30,7 @@
 
 [Итоговая практика](#title30) 
 [   - прогнозирование выживаемости на титанике  ](#title31)  
+[   - прогнозирование выпадения осадков  ](#title32)  
 
 
 **Модель** - это матрицы чисел которые при размышлении перемножаются между собой, умножение осуществляет GPU видеокарты. Для корректной работы модели вся она целиком должна вместиться в VRAM (память видеокарты). Также каждый контекст разговора включается как KV-cache в VRAM, из-за этого чем длиннее разговор, тем больше нужно памяти VRAM   
@@ -2586,4 +2587,197 @@ test_score = model.best_estimator_.score(X_test, y_test)
 print(f"\nTest set accuracy: {test_score:.2%}")
 ~~~
 
+### <a id="title31">Прогнозирование выпадения осадков </a>
+Цель: предсказание будет ли сегодня дождь на основании исторических признаков
 
+Выполнено обучение двух моделей:
+- Ансымбль деревьев (RandomForest)
+- Логистическая регрессия (LogisticRegression)
+
+Выполнение:
+- автоматическое деление признаков на числовые и категориальные
+- на каждый тип признаков создаются трансформеры
+- ColumnTransformer применяет разные трансформеры к разным калонкам
+- полный pipeline объединяет препроцессинг и модель
+- при помощи GridSearchCV выбираем оптимальное количество параметров и лучшую модель
+- проведение оценки модели (Precision, Recall, F1)
+- построение графиков: матрицы путаницы и важности признаов
+
+~~~Python
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+import seaborn as sns
+
+#Загружаем исходные данные
+url="https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/_0eYOqji3unP1tDNKWZMjg/weatherAUS-2.csv"
+df = pd.read_csv(url)
+df.head()
+
+#Оцениваем сколько недостающих значений
+df.count()
+
+#Отбрасываем строки имеющие недостающие значения
+df = df.dropna()
+df.info()
+
+#Сморим список доступных колонок
+df.columns
+
+#Переименовываем колонки в выборке (сдвиг целевой переенной)
+#Хотим предсказывать дождь сегодня на основе вчерашних данных
+df = df.rename(columns={'RainToday': 'RainYesterday',
+                        'RainTomorrow': 'RainToday'
+                        })
+
+#Поскольку мы строим модель для локальной оценки погоды
+#Выполняем группировку по 3 близким местам (15km друг к другу)
+df = df[df.Location.isin(['Melbourne','MelbourneAirport','Watsonia',])]
+df. info()
+
+#Поскольку погода отличается в разные сезоны
+#Спроектируем функцию присваивающую сезон месяцам
+def date_to_season(date):
+    month = date.month
+    if (month == 12) or (month == 1) or (month == 2):
+        return 'Summer'
+    elif (month == 3) or (month == 4) or (month == 5):
+        return 'Autumn'
+    elif (month == 6) or (month == 7) or (month == 8):
+        return 'Winter'
+    elif (month == 9) or (month == 10) or (month == 11):
+        return 'Spring'
+
+
+df['Date'] = pd.to_datetime(df['Date'])
+df['Season'] = df['Date'].apply(date_to_season)
+df=df.drop(columns='Date')
+
+#Объявляем матрицу признаков и целевой вектор
+X = df.drop(columns='RainToday')
+y = df['RainToday']
+
+#Проверка баланса классов (соотношение между количеством объектов каждого класса 50/50 идеал)
+y.value_counts()
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,stratify=y, random_state=42)
+
+#Определяем преобрабатывающие трансформаторы
+#Определяем типы числовых и категориальных признаков
+numeric_features = X_train.select_dtypes(include=['number']).columns.tolist()
+categorical_features = X_train.select_dtypes(include=['object','category']).columns.tolist()
+
+#Отдельные трансформаторы для каждого типа признаков
+numeric_transformer = Pipeline(steps=[('scaler', StandardScaler())])
+categorical_transformer = Pipeline(steps=[('onehot', OneHotEncoder(handle_unknown='ignore'))])
+
+#Объединяем в колоночные трансформаторы
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer, numeric_features),
+        ('cat', categorical_transformer, categorical_features)
+    ]
+)
+
+#Создаем пайплайн объединяя предварительную обработку с RandomForest
+pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', RandomForestClassifier(random_state=42))
+])
+
+#Определяем сетку параметров
+param_grid = {
+    'classifier__n_estimators': [50, 100],
+    'classifier__max_depth': [None, 10, 20],
+    'classifier__min_samples_split': [2, 5]
+}
+
+#Выбираем метод перекрестной проверки
+cv = StratifiedKFold(n_splits=5, shuffle=True)
+
+#Обучаем модель
+grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2)
+grid_search.fit(X_train, y_train)
+print("\nBest parameters found: ", grid_search.best_params_)
+print("Best cross-validation score: {:.2f}".format(grid_search.best_score_))
+
+#Отображаем оценочный бал модели
+test_score = grid_search.score(X_test, y_test)
+print("Test set score: {:.2f}".format(test_score))
+
+#Оценка модели и отчет о классификации
+y_pred = grid_search.predict(X_test)
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+#Строим матрицу путаницы
+conf_matrix = confusion_matrix(y_test, y_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix)
+disp.plot(cmap='Blues')
+plt.title('Conf Matrix')
+plt.show
+
+#Извлекаем значение функции
+feature_importances = grid_search.best_estimator_['classifier'].feature_importances_
+
+feature_names = numeric_features + list(grid_search.best_estimator_['preprocessor']
+                                        .named_transformers_['cat']
+                                        .named_steps['onehot']
+                                        .get_feature_names_out(categorical_features))
+
+feature_importances = grid_search.best_estimator_['classifier'].feature_importances_
+
+importance_df = pd.DataFrame({'Feature': feature_names,
+                              'Importance': feature_importances
+                             }).sort_values(by='Importance', ascending=False)
+
+#Строим график
+N = 20
+top_features = importance_df.head(N)
+plt.figure(figsize=(10, 6))
+plt.barh(top_features['Feature'], top_features['Importance'], color='skyblue')
+plt.gca().invert_yaxis()
+plt.title(f'Top {N} Most Important Features in predicting whether it will rain today')
+plt.xlabel('Importance Score')
+plt.show()
+
+'''****************************************************************************************'''
+#Используем модель логистической регрессии
+
+pipeline.set_params(classifier=LogisticRegression(random_state=42))
+
+grid_search.estimator = pipeline
+
+param_grid = {
+    # 'classifier__n_estimators': [50, 100],
+    # 'classifier__max_depth': [None, 10, 20],
+    # 'classifier__min_samples_split': [2, 5],
+    'classifier__solver' : ['liblinear'],
+    'classifier__penalty': ['l1', 'l2'],
+    'classifier__class_weight' : [None, 'balanced']
+}
+
+grid_search.param_grid = param_grid
+
+model = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2)
+model.fit(X_train, y_train)
+
+#Оценка параметров
+y_pred = model.predict(X_test)
+print(classification_report(y_test, y_pred))
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d')
+plt.title('Titanic Classification Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.tight_layout()
+plt.show()
+~~~
