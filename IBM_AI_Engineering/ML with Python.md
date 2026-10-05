@@ -126,38 +126,62 @@
 ## <a id="title101">▶️Основные инструменты Python </a>  
 | Название | Синтаксис кода |   
 |---|---|   
-| Простая линейная регрессия    | `from sklearn.linear_model import LinearRegression` <br> `model = LinearRegression()` <br> `model.fit(X, y)`|   
-| Полиномиальная регрессия    | from sklearn.preprocessing import PolynomialFeatures   
-from sklearn.linear_model import LinearRegression   
-poly = PolynomialFeatures(degree=2)   
-X_poly = poly.fit_transform(X)    
-model = LinearRegression().fit(X_poly, y)     |   
-| Множественная линейная регрессия      |from sklearn.linear_model import LinearRegression   
-model = LinearRegression()   
-model.fit(X, y)    |   
-| Логистическая регрессия    | from sklearn.linear_model import LogisticRegression   
-model = LogisticRegression()   
-model.fit(X, y)   |   
-| train_test_split    | from sklearn.model_selection import train_test_split   
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)    |   
-| StandardScaler    | from sklearn.preprocessing import StandardScaler   
-scaler = StandardScaler()    
-X_scaled = scaler.fit_transform(X)    |   
-| log_loss   | from sklearn.metrics import log_loss     
-loss = log_loss(y_true, y_pred_proba)   |     
-| mean_absolute_error    | from sklearn.metrics import mean_absolute_error   
-mae = mean_absolute_error(y_true, y_pred)    |     
-| mean_squared_error    | from sklearn.metrics import mean_squared_error     
-mse = mean_squared_error(y_true, y_pred)   |     
-| r2_score    | from sklearn.metrics import r2_score    
-r2 = r2_score(y_true, y_pred)   |    
-| One-Vs-One (with LogisticRegression)    |from sklearn.multiclass import OneVsOneClassifier    
-from sklearn.linear_model import LogisticRegression      
-model = OneVsOneClassifier(LogisticRegression())   |     
+| Простая линейная регрессия  | `from sklearn.linear_model import LinearRegression` <br> `model = LinearRegression()` <br> `model.fit(X, y)`|   
+| Полиномиальная регрессия    | `from sklearn.preprocessing import PolynomialFeatures` <br> `from sklearn.linear_model import LinearRegression` <br> `poly = PolynomialFeatures(degree=2)` <br> `X_poly = poly.fit_transform(X)`  <br> `model = LinearRegression().fit(X_poly, y)`|   
+| Множественная линейная регрессия | `from sklearn.linear_model import LinearRegression` <br> `model = LinearRegression()` <br> `model.fit(X, y)` |   
+| Логистическая регрессия    | `from sklearn.linear_model import LogisticRegression` <br> `model = LogisticRegression()` <br>  `model.fit(X, y)`  |   
+| train_test_split    | `from sklearn.model_selection import train_test_split` <br> `X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)`|   
+| StandardScaler    | `from sklearn.preprocessing import StandardScaler` <br> `scaler = StandardScaler()` <br> `X_scaled = scaler.fit_transform(X)`    |   
+| log_loss   | `from sklearn.metrics import log_loss` <br> `loss = log_loss(y_true, y_pred_proba)`   |     
+| mean_absolute_error | `from sklearn.metrics import mean_absolute_error` <br> `mae = mean_absolute_error(y_true, y_pred)`|     
+| mean_squared_error  | `from sklearn.metrics import mean_squared_error` <br> `mse = mean_squared_error(y_true, y_pred)`  |     
+| r2_score    | `from sklearn.metrics import r2_score` <br> `r2 = r2_score(y_true, y_pred)` |    
+| One-Vs-One (with LogisticRegression) | `from sklearn.multiclass import OneVsOneClassifier` <br> `from sklearn.linear_model import LogisticRegression` <br> `model = OneVsOneClassifier(LogisticRegression())`|  
+| One-Vs-All (with LogisticRegression)   | `from sklearn.multiclass import OneVsRestClassifier` <br> `from sklearn.linear_model import LogisticRegression` <br> `model = OneVsRestClassifier(LogisticRegression())`|
+|  DecisionTreeClassifier   |  `from sklearn.tree import DecisionTreeClassifier` <br> `model = DecisionTreeClassifier(max_depth=5)`  |
+|  DecisionTreeRegressor   | `from sklearn.tree import DecisionTreeRegressor` <br> `model = DecisionTreeRegressor(max_depth=5)`   |
+|  SVM   | `from sklearn.svm import SVC` <br> `model = SVC(kernel='linear', C=1.0)` |
+|  K-nn   |  `from sklearn.neighbors import KNeighborsClassifier` <br> `model = KNeighborsClassifier(n_neighbors=5, weights='uniform')`  |
+|  RandomForestRegressor   |  `from sklearn.ensemble import RandomForestRegressor` <br> `model = RandomForestRegressor(n_estimators=100, max_depth=5)`  |
+| Регрессор XGBoost | `import xgboost as xgb` <br> `model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=5)` |
+|  OneHotEncoder   |  `from sklearn.preprocessing import OneHotEncoder` <br> `encoder = OneHotEncoder(sparse=False)` <br> `encoded_data = encoder.fit_transform(categorical_data)` |
+|  accuracy_score  |  `from sklearn.metrics import accuracy_score` <br> `accuracy = accuracy_score(y_true, y_pred)`  |
+|  LabelEncoder  |  `from sklearn.preprocessing import LabelEncoder` <br> `encoder = LabelEncoder()` <br> `encoded_labels = encoder.fit_transform(labels)`  |
+|  plot_tree   | `from sklearn.tree import plot_tree` <br> `plot_tree(model, max_depth=3, filled=True)`   |
+|  normalize   | `from sklearn.preprocessing import normalize` <br> `normalized_data = normalize(data, norm='l2')`  |
+| compute_sample_weight | `from sklearn.utils.class_weight import compute_sample_weight` <br> `weights = compute_sample_weight(class_weight='balanced', y=y)`  |
+| roc_auc_score    |  `from sklearn.metrics import roc_auc_score` <br> `auc = roc_auc_score(y_true, y_score)`  |
+|  UMAP   |  `from umap.umap_ import UMAP` <br> `umap = UMAP(n_neighbors=15, min_dist=0.1, n_components=2)`   |
+|  t-SNE   |  `from sklearn.manifold import TSN` <br> `tsne = TSNE(n_components=2, perplexity=30, learning_rate=200)`  |
+|  PCA   |  `from sklearn.decomposition import PCA` <br> `pca = PCA(n_components=2)` |
+|  DBSCAN   |  `from sklearn.cluster import DBSCAN` <br> `dbscan = DBSCAN(eps=0.5, min_samples=5)`  |
+|   HDBSCAN  | `import hdbscan` <br> `clusterer = hdbscan.HDBSCAN(min_cluster_size=5)` |
+|  Кластеризация K-Means   |  `from sklearn.cluster import KMeans` <br> `kmeans = KMeans(n_clusters=3)`  |
+|   make_blobs  |  `from sklearn.datasets import make_blobs` <br> `X, y = make_blobs(n_samples=100, centers=2, random_state=42)`  |
+|  multivariate_normal   |  `from numpy.random import multivariate_normal` <br> `samples = multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=100)`  |
+|   plotly.express.scatter_3d  |  `import plotly.express as px` <br> `fig = px.scatter_3d(df, x='x', y='y', z='z')` <br> `fig.show()`|
+|  geopandas.GeoDataFrame   | `import geopandas as gpd` <br> `gdf = gpd.GeoDataFrame(df, geometry='geometry')`   |
+|   geopandas.to_crs  | `gdf = gdf.to_crs(epsg=3857)`|
+|  contextily.add_basemap   |  `import contextily as ctx` <br> `ax = gdf.plot(figsize=(10, 10))` <br> `ctx.add_basemap(ax)`  |
+|  pca.explained_variance_ratio   |  `from sklearn.decomposition import PCA` <br> `pca = PCA(n_components=2)` <br> `pca.fit(X)` <br> `variance_ratio = pca.explained_variance_ratio_`  |
+|  classification_report   |  `from sklearn.metrics import classification_report` <br> `report = classification_report(y_true, y_pred, target_names=["class1", "class2"])`  |
+|  confusion_matrix   |  `from sklearn.metrics import confusion_matrix` <br> `conf_matrix = confusion_matrix(y_true, y_pred)`  |
+|  mean_squared_error (MSE) |  `from sklearn.metrics import mean_squared_error` <br> `mse = mean_squared_error(y_true, y_pred)`  |
+|  root_mean_squared_error (RMSE) | `from sklearn.metrics import root_mean_squared_error` <br> `rmse = root_mean_squared_error(y_true, y_pred)`  |
+|   mean_absolute_error (MAE)  |  `from sklearn.metrics import mean_absolute_error` <br> `mae = mean_absolute_error(y_true, y_pred)`  |
+|   r2_score  |  `from sklearn.metrics import r2_score` <br> `r2 = r2_score(y_true, y_pred)`  |
+|  silhouette_score   |  `from sklearn.metrics import silhouette_score` <br> `score = silhouette_score(X, labels, metric='euclidean')`  |
+|  silhouette_samples   | `from sklearn.metrics import silhouette_samples` <br> `samples = silhouette_samples(X, labels, metric='euclidean')`   |
+|   davies_bouldin_score  |  `from sklearn.metrics import davies_bouldin_score` <br> `db_score = davies_bouldin_score(X, labels)`  |
+|  Voronoi   |  `from scipy.spatial import Voronoi` <br> `vor = Voronoi(points)`  |
+|   voronoi_plot_2d  |   `from scipy.spatial import voronoi_plot_2d` <br> `voronoi_plot_2d(vor, show_vertices=True)` |
+|  explained_variance_score   |  `from sklearn.metrics import explained_variance_score` <br> `ev_score = explained_variance_score(y_true, y_pred)`  |
+|  Ridge   |  `from sklearn.linear_model import Ridge` <br> `ridge = Ridge(alpha=1.0)` |
+|   Lasso  | `from sklearn.linear_model import Lasso` <br> `lasso = Lasso(alpha=0.1)` |
+|  Pipeline   |  `from sklearn.pipeline import Pipeline` <br> `pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('model', Ridge(alpha=1.0))])` |
+|   GridSearchCV  |   `from sklearn.model_selection import GridSearchCV` <br> `grid_search = GridSearchCV(estimator=Ridge(), param_grid={'alpha': [0.1, 1.0, 10.0]})` |
 
-| Ячейка 3    | Ячейка 4    |
 
-| Ячейка 3    | Ячейка 4    |
 
 
 ## <a id="title1">▶️Основные понятия и сокращения </a>   
