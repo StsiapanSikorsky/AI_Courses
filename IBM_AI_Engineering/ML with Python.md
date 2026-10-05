@@ -1,6 +1,7 @@
 # Конспект по курсу IBM ML on Python
 ## Содержание
 [Красткое содержание и основные моменты курса](#title100)  
+[Основные инструменты Python](#title101)  
 
 [Основные понятия и сокращения](#title1)  
 [Инструменты ML](#title2)  
@@ -121,6 +122,44 @@
 3) UMAP -	нелинейный.	Сохраняет локальную + глобальную
 
 
+
+## <a id="title101">▶️Основные инструменты Python </a>  
+| Название | Синтаксис кода |   
+|---|---|   
+| Простая линейная регрессия    | from sklearn.linear_model import LinearRegression   
+model = LinearRegression()   
+model.fit(X, y)     |   
+| Полиномиальная регрессия    | from sklearn.preprocessing import PolynomialFeatures   
+from sklearn.linear_model import LinearRegression   
+poly = PolynomialFeatures(degree=2)   
+X_poly = poly.fit_transform(X)    
+model = LinearRegression().fit(X_poly, y)     |   
+| Множественная линейная регрессия      |from sklearn.linear_model import LinearRegression   
+model = LinearRegression()   
+model.fit(X, y)    |   
+| Логистическая регрессия    | from sklearn.linear_model import LogisticRegression   
+model = LogisticRegression()   
+model.fit(X, y)   |   
+| train_test_split    | from sklearn.model_selection import train_test_split   
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)    |   
+| StandardScaler    | from sklearn.preprocessing import StandardScaler   
+scaler = StandardScaler()    
+X_scaled = scaler.fit_transform(X)    |   
+| log_loss   | from sklearn.metrics import log_loss     
+loss = log_loss(y_true, y_pred_proba)   |     
+| mean_absolute_error    | from sklearn.metrics import mean_absolute_error   
+mae = mean_absolute_error(y_true, y_pred)    |     
+| mean_squared_error    | from sklearn.metrics import mean_squared_error     
+mse = mean_squared_error(y_true, y_pred)   |     
+| r2_score    | from sklearn.metrics import r2_score    
+r2 = r2_score(y_true, y_pred)   |    
+| One-Vs-One (with LogisticRegression)    |from sklearn.multiclass import OneVsOneClassifier    
+from sklearn.linear_model import LogisticRegression      
+model = OneVsOneClassifier(LogisticRegression())   |     
+
+| Ячейка 3    | Ячейка 4    |
+
+| Ячейка 3    | Ячейка 4    |
 
 
 ## <a id="title1">▶️Основные понятия и сокращения </a>   
