@@ -126,8 +126,10 @@
 ## <a id="title101">▶️Основные инструменты Python </a>  
 | Название | Синтаксис кода |   
 |---|---|   
-| Простая линейная регрессия    | from sklearn.linear_model import LinearRegression   
-model = LinearRegression()   
+| Простая линейная регрессия    | from sklearn.linear_model import LinearRegression    
+   
+model = LinearRegression()    
+     
 model.fit(X, y)     |   
 | Полиномиальная регрессия    | from sklearn.preprocessing import PolynomialFeatures   
 from sklearn.linear_model import LinearRegression   
