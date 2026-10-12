@@ -229,7 +229,7 @@ w — вес, который нужно найти (не знаем)
 **Градиент** - наклон функции потерь
 
 Формула обновления веса в градиентном спуске:   
-![2.4](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.5.png)   
+![2.5](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.5.png)   
 
 где: 
 w_new - новое значение веса (куда придем после шага)  
@@ -367,5 +367,115 @@ plt.xlabel('Epochs')
 plt.ylabel('Error')
 plt.show()
 ~~~
+
+## Исчезающий градиент (Vanishing gradient)
+Из за использования сигмоиды в качестве функции активации, все промежуточные значения находятся в диапазоне от 0 до 1. При обратном распространении мы умножаем множетели меньше единицы друг на друга и как правило их градиенты становятся все меньше. Из за этого нейроны на малых уровнях обучаются очень медленно по сравнению с нейронами последующих уровней. В результате процесс обучения занимает слишком много времени, а точность прогнозов снижается
+
+Соответственно сигмоидные и аналогичные функции не используют в качестве функции активации, поскольку они подвержены проблеме исчезающего градиента
+
+## Функции активации (Activation Functions)
+Типы функций активаций для построения нейросетей:
+1) Двоичная ступенчатая функция
+2) Линейная функция
+3) Сигмоидная функция - широко применялась, но из за проблемы исчезающего градиента практически не применяется в многослойных нейросетях. Также имеет недостаток что все ее значения применяют только положительный характер  
+![2.6](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.6.png)    
+4) Функция гиперболического тангенса (tanh) - похожа на сигмоидную функцию, но симметрична относительно оси начала координат от -1 до 1. Также приводит к проблеме исчезающего градиента в очень глубоких нейросетях  
+![2.7](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.7.png)  
+5) Выпрямленная линейная единица функция (ReLU) - наиболее широко используемая функция активации. Преимуществом является то что она не активирует все нейроны одновременно. Если входные данные отрицательны они будут преобразованы в 0, а нейрон не активируется. Одновременно активируется лишь несколько нейронов, что делает сеть разряженной и очень эффективной. Данная функция решила проблему исчезающего градиента. Используется только в сырых слоях  
+![2.8](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.8.png)  
+6) Функция протечки ReLU
+7) Softmax функция - разновидность сигмоидной функции, но удобна при решении задач классификации где на выходе нужно получить вероятности принадлежности входного класса
+
+Практика: исследование функций активации: Sigmoid и ReLU и tanh
+~~~Python
+import numpy as np
+import matplotlib.pyplot as plt
+
+#Определяем сигмоидную функцию активации
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+#Определяем гидрафную сигмоиду
+def sigmoid_derivative(z):
+    return sigmoid(z) * (1 - sigmoid(z))
+
+#Определяем ReLU
+def relu(z):
+    return np.maximum(0, z)
+
+def relu_derivative(z):
+    return np.where(z > 0, 1, 0)
+
+#Генерируем 400 входных значений от -10 до 10
+z = np.linspace(-10, 10, 400)
+
+#Вычисляем производные функций сигмоиды и ReLU
+sigmoid_grad = sigmoid_derivative(z)
+relu_grad = relu_derivative(z)
+
+#Визуализируем функции и их градиенты
+plt.figure(figsize=(12, 6))
+
+# Plot Sigmoid and its derivative
+plt.subplot(1, 2, 1)
+plt.plot(z, sigmoid(z), label='Sigmoid Activation', color='b')
+plt.plot(z, sigmoid_grad, label="Sigmoid Derivative", color='r', linestyle='--')
+plt.title('Sigmoid Activation & Gradient')
+plt.xlabel('Input Value (z)')
+plt.ylabel('Activation / Gradient')
+plt.legend()
+
+# Plot ReLU and its derivative
+plt.subplot(1, 2, 2)
+plt.plot(z, relu(z), label='ReLU Activation', color='g')
+plt.plot(z, relu_grad, label="ReLU Derivative", color='r', linestyle='--')
+plt.title('ReLU Activation & Gradient')
+plt.xlabel('Input Value (z)')
+plt.ylabel('Activation / Gradient')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+#Определяем функцию тангенса гиперболического
+def tanh(z):
+    return np.tanh(z)
+
+def tanh_derivative(z):
+    return 1 - np.tanh(z) ** 2
+
+#Сравнение функции тангенса с функцией ReLU
+z = np.linspace(-5, 5, 100)
+
+tanh_grad = tanh_derivative(z)
+relu_grad = relu_derivative(z)
+
+plt.figure(figsize=(12, 6))
+
+# Plot Relu and its derivative
+plt.subplot(1, 2, 1)
+plt.plot(z, relu(z), label='ReLU Activation', color='g')
+plt.plot(z, relu_grad, label="ReLU Derivative", color='r', linestyle='--')
+plt.title('ReLU Activation & Gradient')
+plt.xlabel('Input Value (z)')
+plt.ylabel('Activation / Gradient')
+plt.legend()
+
+
+# Plot tanH and its derivative
+plt.subplot(1, 2, 2)
+plt.plot(z, tanh(z), label='tanH Activation', color='g')
+plt.plot(z, tanh_grad, label="tanH Derivative", color='r', linestyle='--')
+plt.title('tanH Activation & Gradient')
+plt.xlabel('Input Value (z)')
+plt.ylabel('Activation / Gradient')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+~~~
+
+
+
 
 
