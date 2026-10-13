@@ -373,7 +373,7 @@ plt.show()
 
 Соответственно сигмоидные и аналогичные функции не используют в качестве функции активации, поскольку они подвержены проблеме исчезающего градиента
 
-## Функции активации (Activation Functions)
+### Функции активации (Activation Functions)
 Типы функций активаций для построения нейросетей:
 1) Двоичная ступенчатая функция
 2) Линейная функция
@@ -475,7 +475,111 @@ plt.tight_layout()
 plt.show()
 ~~~
 
+## Keras и библиотеки глубокого обучения
+### Библиотеки глубокого обучения
+1) TensorFlow - самая популярная библиотека. Чаще всего используется для создания моделей глубокого обучения. Выпущена в 2015, разработана Google
+2) PyTorch - основан на платформе Torch и языке Luar. Поддерживает алгоритмы машинного обучения работающие на графических процессорах. Выпущен в 2016. Становится предпочтительнее, чем применение библиотеки TensorFlow в академических исследованиях и приложениях глубокого обучения
+3) Keras - высокоуровневый API для создания моделей глубокого обучения. Проще в освоении и применении чем TensorFlow и PyTorch. Keras обычно работает поверх более низкоуровневой библиотеки TensorFlow (для использования Keras в начале нужно устаовить TensorFlow)
+4) Theano - одна из первых устаревшихх библиотек глубокого обучения. Больше не поддерживается
 
+>[!NOTE]
+>Еслли хотим создать нейростеть быстро можно использовать Keras. Но если необходимо лучше контролировать разные узлы и уровни сети или следить что происходит с сетью с течением времени, необходимо применть PyTorch или TensorFlow
+
+
+### Регрессионные модели с помощью Keras
+
+**Плотная нейросеть** - 
+**Предикторы** - 
+**Мишени** - 
+
+В библиотеке Keras есть две модели
+1) Последовательная модель (*Sequential*)
+2) Класс модели используемый в функциональном API
+
+Пример создания простой регрессивной модели с помощью Keras:
+~~~Python
+import keras
+from keras.model import Sequential
+from keras.layers import Dense
+
+#Создание модели
+model = Sequential()
+
+#Создание слоев (количество нейронов в каждом слое 5, функция активации ReLU
+n_cols = concrete_data.shape[1]
+model.add(Dense(5, activation='relu', input_shape=(n_cols,)))
+model.add(Dense(5, activation='relu'))
+model.add(Dense(1))
+
+#adam-Adam в качестве алгоритма оптимизации
+#MSE-мера потерь
+model.compile(optimizer='adam', loss='mean_squared_error')
+model.fit(predictors, target)
+
+#Делаем прогнозы
+predictions = model.predict(test_data)
+~~~
+
+Практика: Использование Keras для построения регрессионной модели
+~~~Python
+import os
+
+#Подавление предупреждений о использовании CPU
+#При использовании модели на GPU просто закоментить
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+import pandas as pd
+import numpy as np
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Input
+
+import warnings
+warnings.simplefilter('ignore', FutureWarning)
+
+
+
+#Загружаем и очищаем датасет
+filepath='https://s3-api.us-geo.objectstorage.softlayer.net/cf-courses-data/CognitiveClass/DL0101EN/labs/data/concrete_data.csv'
+concrete_data = pd.read_csv(filepath)
+
+concrete_data.head()
+concrete_data.shape
+concrete_data.describe()
+concrete_data.isnull().sum()
+
+#Разделение данных на предикторы и целевые
+concrete_data_columns = concrete_data.columns
+predictors = concrete_data[concrete_data_columns[concrete_data_columns != 'Strength']]
+target = concrete_data['Strength']
+
+predictors.head()
+target.head()
+
+#Нормализуем данные
+'''Путем вычитания среднего и деления на стандартное отклонение'''
+predictors_norm = (predictors - predictors.mean()) / predictors.std()
+predictors_norm.head()
+
+n_cols = predictors_norm.shape[1]
+
+#Построение нейросети
+def regression_model():
+    model = Sequential()
+    model.add(Input(shape=(n_cols,)))
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(1))
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    return model
+
+#Тренировка и построение сети
+model = regression_model()
+model.fit(predictors_norm, target, validation_split=0.3, epochs=100, verbose=2)
+~~~
 
 
 
