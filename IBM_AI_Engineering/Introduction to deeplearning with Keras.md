@@ -487,10 +487,8 @@ plt.show()
 
 
 ### Регрессионные модели с помощью Keras
+Поскольку регрессия представляет собой пресказание непрерывного значчения, на выходе всегда один нейрон БЕЗ ФУНКЦИИ АКТИВАЦИИ (линейный выход)
 
-**Плотная нейросеть** - 
-**Предикторы** - 
-**Мишени** - 
 
 В библиотеке Keras есть две модели
 1) Последовательная модель (*Sequential*)
@@ -581,5 +579,95 @@ model = regression_model()
 model.fit(predictors_norm, target, validation_split=0.3, epochs=100, verbose=2)
 ~~~
 
+### Классификационные модели с помощью Keras
+Процесс создания классификационной модели с Keras сводится к четырем шагам:
+1) Создание модели
+2) Компиляция
+3) Обучение
+4) Оценка
 
+При решении задачи классификации с Keras нам необходимо преобразовать целевой столбец в массив с двоичными данными (используя функцию *toCategorical*)
 
+Вотличие от решения задачи регрессии, выходных нейронов может быть столько, сколько классов мы классифицируем, также следует назначать выходным нейронам функцию активации (для решения задач двоичного классификатора будет достаточно применить сигмоиду, а для множественной классификации стоит рассмотреть функцию softmax)
+
+Пример создания классификационной модели с Keras (8 входных предиктов и 4 выходных нейрона классификации:
+~~~Python
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.utils import to_categorical
+
+model = Sequential()
+
+n_cols = car_data.shape[1]
+target = to_categorical(target)
+
+model.add(Dense(5, activation='relu', input_shape=(n_cols,)))
+model.add(Dense(5, activation='relu'))
+model.add(Dense(4, activation='softmax'))
+
+model.compile(optimizer='adam',
+                loss='categorical_crossentropy',
+                metrics=['accuracy'])
+~~~
+
+Практика: обучение классификации Keras на наборе данных MIST
+~~~Python
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Input
+from keras.utils import to_categorical
+import matplotlib.pyplot as plt
+from keras.datasets import mnist
+
+#Загружаем данные из библиотеки MNIST
+(X_train, y_train), (X_test, y_test) = mnist.load_data()
+X_train.shape """(6000, 28, 28) - 6к изображение 28х28 пикселей"""
+
+#Визуализируем первое изображение
+plt.imshow(X_train[0])
+
+#Сглаживаем изображение в одномерные векторы (поскольку в обычной нейросети по другому мы не можем подать)
+num_pixels = X_train.shape[1] * X_train.shape[2]
+X_train = X_train.reshape(X_train.shape[0], num_pixels).astype('float32')
+X_test = X_test.reshape(X_test.shape[0], num_pixels).astype('float32')
+
+#Нормализуем векторы (поскольку значения пикселей варьируется в пределах 0-255)
+X_train = X_train / 255
+X_test = X_test / 255
+
+#Разделяем целевую переменную на категории
+y_train = to_categorical(y_train)
+y_test = to_categorical(y_test)
+num_classes = y_test.shape[1]
+print(num_classes)
+
+#Определяем функцию посмтроения модели
+def classification_model():
+    model = Sequential()
+    model.add(Input(shape=(num_pixels,)))
+    model.add(Dense(num_pixels, activation='relu'))
+    model.add(Dense(100, activation='relu'))
+    model.add(Dense(num_classes, activation='softmax'))
+
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+#Тренируемм и тестируем модель
+model = classification_model()
+model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=10, verbose=2)
+scores = model.evaluate(X_test, y_test, verbose=0)
+
+#Расчитываем точность модели
+print('Accuracy: {}% \n Error: {}'.format(scores[1], 1 - scores[1]))
+
+#Сохраняем модель (.keras)
+model.save('classification_model.keras')
+
+#Используем функцию загрузки модели (когда понадобится еще ее использовать)
+pretrained_model = keras.saving.load_model('classification_model.keras')
+~~~
