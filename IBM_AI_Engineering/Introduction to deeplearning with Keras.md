@@ -671,3 +671,120 @@ model.save('classification_model.keras')
 #Используем функцию загрузки модели (когда понадобится еще ее использовать)
 pretrained_model = keras.saving.load_model('classification_model.keras')
 ~~~
+
+## Модели глубокого обучения
+### Неглубокие и глубокие нейронные сети
+**Мелкая нейронная сеть** - сеть содержащая 1 или 2 скрытых слоя и принимает входные параметры только в виде векторов
+
+Глубокие нейронные сети имеют от 3 и более скрытых слоев и множество нейронов в них, они спообны принимать необработанные данные (прим. изображения или текст) и автоматически извлекают функции для лучшего изучения данных
+
+Резкое увеличение производительности и внедрения нейросетей обусловлено факторам:
+1) Прогресс в самой области (например использование ReLU)
+2) Доступность данных (глубокие нейросети лучше работают при обучении с большими объемами данных), чем больше данных мы передадим, тем лучше работают нейросети
+3) Повышение вычислительных мощностей
+
+### Сверточные нейронные сети CNN
+CNN - сверточные нейронные сети предназначенные для решения задач распознования изображений, обнаружения объектов и компьютерного зраения. Они понимают что на вход подаются изображения в формате nxnx1 для серых оттенков и nxnx3 для RGB. CNN имеют значительно меньше параметров за счет использования фильтров (общих весов), что ускоряет обучение и снижает риск переобучения
+
+
+#### Архитектура CNN:
+
+![2.9](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.9.png)  
+
+Сеть состоит из:
+**1) Входной слой**
+**2) Сверточные слои (ReLU)**
+В сверточном слое мы определяем фильтры и вычисляем свертку между определенными фильтрами и каждым из 3 изображений. Фильтр наносится на изображение и вычисляет произведение между точками и сохраняет значение в пустую ячейку матрицы. Далее шаги повторяются с перемещением фильтра с определенным шагом (stride). Этапы повторяются пока не будет пройдено все изображение и матрица не заполнится. Те же дествия применяются к зеленым и синим изображениям. Сверточный слой также содержит ReLU
+
+![2.10](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.10.png)  
+
+**3) Слои объединения (Pooling Layer)**
+Слой объединения - уменьшает пространственные размеры данных распространяемых по сети, уменьшает вычислительную сложность и дает модели пространственную инвариантность (сеть узнает изображение даже если он немного сдвинут на картинке)
+Существует два слоя объединения:
+*- Максимальное количество пулов (наиболее распространенное)* - для каждого сканируемого участка изображения сохраняется наибольшее значение (например фильтр перемещается по 2 шага за раз)
+  
+![2.11](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.11.png)  
+
+*- Среднее количество пулов*- вычисляется среднее значение на каждой сканирующей области
+  
+![2.12](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.12.png)  
+
+**4) Полностью связанный слой**
+Входные данные последнего сверточного слоя сглаживаются (Flattern) и соединяем каждый узел текущего слоя с каждым узлом следуующего слоя. Количество нейронов в слое ровняется количеству классов в рассматриваемой задаче (например при классификации цифр на изображении количество нейронов = 10)
+
+#### Применение Keras для построения CNN
+~~~Python
+model = Sequential()
+
+#Изображения 128х128px
+input_shape = (128, 128, 3)
+model.add(Input(shape=(input_shape)))
+
+#Сверточный слой с 16 фильтрами 2х2 с шагом 1 в горизонтальном и 1 в вертикальном направлении
+model.add(Conv2D(16, kernel_size=(2, 2), strides=(1, 1), activation='relu'))
+
+#Слой объединения, используем максимальное количество пула с размером фильтра 2х2 с шагами 2,2
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+
+#Добавляем еще набор сверточных слоев (используем больше фильтров
+model.add(Conv2D(32, kernel_size=(2, 2), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+#Выравниваем выходные данные сверточных слоев, для перехода их полностью связанные слои
+model.add(Flattern())
+#Плотый слой со 100 узлами
+model.add(Dense(100, activation='relu'))
+#Выходной слой равный количеству классов в расматривваемой задаче
+model.add(Dense(num_classes, activation='softmx'))
+~~~
+
+#### Практика: построене CNN модели на Keras
+~~~Python
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Input
+from keras.utils import to_categorical
+from keras.layers import Conv2D
+from keras.layers import MaxPooling2D
+from keras.layers import Flatten
+
+from keras.datasets import mnist
+
+
+(X_train, y_train), (X_test, y_test) = mnist.load_data()
+
+X_train = X_train.reshape(X_train.shape[0], 28, 28, 1).astype('float32')
+X_test = X_test.reshape(X_test.shape[0], 28, 28, 1).astype('float32')
+
+X_train = X_train / 255
+X_test = X_test / 255
+
+y_train = to_categorical(y_train)
+y_test = to_categorical(y_test)
+num_classes = y_test.shape[1]
+
+
+def convolutional_model():
+    model = Sequential()
+    model.add(Input(shape=(28, 28, 1)))
+    model.add(Conv2D(16, (5, 5), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+    model.add(Conv2D(8, (2, 2), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+
+    model.add(Flatten())
+    model.add(Dense(100, activation='relu'))
+    model.add(Dense(num_classes, activation='softmax'))
+
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+model = convolutional_model()
+model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=10, batch_size=200, verbose=2)
+scores = model.evaluate(X_test, y_test, verbose=0)
+print("Accuracy: {} \n Error: {}".format(scores[1], 100-scores[1]*100))
+~~~
