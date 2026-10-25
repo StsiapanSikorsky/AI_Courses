@@ -794,35 +794,37 @@ print("Accuracy: {} \n Error: {}".format(scores[1], 100-scores[1]*100))
 
 **LSTM (Long Short Term Memory)** - популярная модель улучшенной RNN с долговременной памятью. Используется для генерации изображений, генерации рукописного текста
 
+RNN обрабатывают данные последовательно, что замедляет процесс обучения. Подходят для задач с короткими зависимостями и плохо работают с большим контекстом, а также могут страдать от исчезающих градиентов
+
 На данный момент данный вид нейросетей RNN/LSTM практически вытеснены трансформерами
 
 ### Трансформеры (Transformers)
-Данная архитектура произвела революцию в обработке естественного языка (NLP). Трансформеры используются для создания моделей глубокого обучения и лежат в основе ChatGPT/Gemini. Трансформеры отлично улавливают долгосрочные зависимости в последоватеьностях данных (в отличие от CNN и RNN) и они идеально подходят для задач машинного перевода, суммирования текста, ответа на ввопроы и генерации текста в изображение. Клюевым в трансформерах является механизм внимания
+**Трансформеры** - разновидность архитектуры нейросетей. Данная архитектура произвела революцию в обработке естественного языка (NLP). Трансформеры используются для создания моделей глубокого обучения и лежат в основе ChatGPT/Gemini. Трансформеры отлично улавливают долгосрочные зависимости в последоватеьностях данных (в отличие от CNN и RNN) и они идеально подходят для задач машинного перевода, суммирования текста, ответа на ввопроы и генерации текста в изображение. Клюевым в трансформерах является механизм внимания
 
-**Механизм внимания** - механизм позволяющий модели оценивать важость разных разных частей входной последовательности при обработке каждого ввода или токена. Обращая внимание на соответствующие части входных данны трансформеры мгут эффективно выявлять зависимости на больших расстояниях
+**Механизм самовнимания** - механизм позволяющий модели оценивать важность разных частей входной последовательности при обработке каждого ввода или токена. Обращая внимание на соответствующие части входных данных трансформеры могут эффективно выявлять зависимости на больших расстояниях (Например в предложении Собака не перешла улицу, потому что она была слишком устала механизм самовнимания поймет что *она* скорее относится к *собака*, чем к *улица*)
 
 #### Трансформеры используют механизм самовнимания для обработки тектовых данных состоящий из частей:
 1) Для кадого входного токена генерируются векторы запроса(Q)/ключа(K)/значения(V)
-Q-представляет собой слово, на котором мы сосредоточены
-K-все остальные слова
-V-содержит информацию которую нужно передать следующему слою
+Q-представляет собой слово, на котором мы сосредоточены (Что я ищу?)
+K-все остальные слова (Что я могу предложить?)
+V-содержит информацию которую нужно передать следующему слою (Что я реально предлогаю?)
 
-2) Оценка внимания - вектор запроса токена Q сравнивается с ключевым вектором К всех других токенов при помощи точечного воспроизведения. В результате получается набор баллов внимания, указывающий на соответствие каждого токена текущему тоену
+2) Оценка внимания - вектор запроса токена Q сравнивается с ключевым вектором К всех других токенов при помощи точечного воспроизведения. В результате получается набор баллов внимания (на сколько они связаны), указывающий на соответствие каждого токена текущему токену
 
-3) Взвешенная сумма - оценки внимания норализуются и для получения векторов контекста вычисляется взвешенная сумма векторов значений для текущего токена
+3) Взвешенная сумма - оценки внимания норализуются (через softmax) и для получения векторов контекста вычисляется взвешенная сумма векторов значений для текущего токена
 
 #### Пример:
 1) Каждое слово на входе представлено вектором или вложением во внутреннее векторное пространство (сохраняющим позиционную информацию слова в предложении)
 
-IMAGE1
+![2.13](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.13.png)  
 
 2) Далее мы генерируем Q, K и V из кадого входного вектора
 
-IMAGE2
+![2.14](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.14.png)  
 
 3) Для каждого слова мы вычисляем как оно должно соответствовать каждому другому слову, значения в матрице ниже можно назвать **баллами внимания**
 
-IMAGE3
+![2.15](https://github.com/StsiapanSikorsky/AI_Courses/blob/main/IBM_AI_Engineering/img/2.15.png)  
 
 4) Масштабируем оценку и применяем функцию *softmax* для нормализации оценок и превращения их в вероятности
 
@@ -836,6 +838,164 @@ IMAGE3
 **Механизм перекрестного внимания** - позволяет последовательности данных одного типа (текстовая подсказка), влиять на генерацию последовательности данных другого типа (изображения). 
 
 Алгоритм:
-1) Механизм изучает контекст встраивания на основе всегопредложания
-2)
+1) Механизм изучает контекст встраивания на основе всего предложения
+2) Вложения передаются через кодировщик-преобразователь который выдает вектор запросов Q
+3) Модель преобразователя изображений (прим DALL-E) использует механизм перекрестного внимания для генерации изображения на основе Q
+4) Модель преобразователя изображений генерирует изображение используя вариант авторегрессионной модели, модель предсказывает следующую часть изображения на основе текстовой подсказки и ранее созданных частей изображения
+
+В отличие от RNN, которые обрабатывают последовательность данных, трансформеры можно распараллеливать, что значительно ускоряет повышение квалификации. Это особенно эффективно для машинного перевода, генерации текста и других NLP
+
+Поскольку трансформеры полагаются на обучение на основе денных для определения взаимосвязей, им требуется огромное количество обучающих данных. В этом и заключается главный недостаток трансформров - унаследование подвязанности данных
+
+#### Практика:
+~~~Python
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+import numpy as np
+from keras.models import Model
+from keras.layers import Input, LSTM, Dense, Embedding, Dropout
+from tensorflow.keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras import backend as K
+from keras.layers import Layer
+import warnings
+warnings.simplefilter('ignore', FutureWarning)
+
+from tensorflow.keras.layers import Layer
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import AdditiveAttention, Concatenate, Dense, Embedding, Input, LSTM
+from tensorflow.keras.models import Model
+import matplotlib.pyplot as plt
+
+#Подготавливаем данные
+input_texts = ["Hello.", "How are you?", "I am learning machine translation.", "What is your name?", "I love programming."]
+target_texts = ["Hola.", "¿Cómo estás?", "Estoy aprendiendo traducción automática.", "¿Cuál es tu nombre?", "Me encanta programar."]
+
+target_texts = ["startseq " + x + " endseq" for x in target_texts]
+
+#Преобразуем текст из предложения в токены, используя Tokenizer()
+input_tokenizer = Tokenizer()
+input_tokenizer.fit_on_texts(input_texts)
+input_sequences = input_tokenizer.texts_to_sequences(input_texts)
+
+output_tokenizer = Tokenizer()
+output_tokenizer.fit_on_texts(target_texts)
+output_sequences = output_tokenizer.texts_to_sequences(target_texts)
+
+input_vocab_size = len(input_tokenizer.word_index) + 1
+output_vocab_size = len(output_tokenizer.word_index) + 1
+
+#?????
+max_input_length = max([len(seq) for seq in input_sequences])
+max_output_length = max([len(seq) for seq in output_sequences])
+
+input_sequences = pad_sequences(input_sequences, maxlen=max_input_length, padding='post')
+output_sequences = pad_sequences(output_sequences, maxlen=max_output_length, padding='post')
+
+#Готовим данные для тренировки
+decoder_input_data = output_sequences[:, :-1]
+decoder_output_data = output_sequences[:, 1:]
+
+#Инвертируем one-hot
+decoder_output_data = np.array([np.eye(output_vocab_size)[seq] for seq in decoder_output_data])
+
+
+#Слой самовниимания
+class SelfAttention(Layer):
+    def __init__(self, **kwargs):
+        super(SelfAttention, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        # input_shape is a list: [q_shape, k_shape, v_shape]
+        feature_dim = input_shape[0][-1]
+
+        self.Wq = self.add_weight(
+            shape=(feature_dim, feature_dim),
+            initializer='glorot_uniform',
+            trainable=True,
+            name='Wq'
+        )
+
+        self.Wk = self.add_weight(
+            shape=(feature_dim, feature_dim),
+            initializer='glorot_uniform',
+            trainable=True,
+            name='Wk'
+        )
+
+        self.Wv = self.add_weight(
+            shape=(feature_dim, feature_dim),
+            initializer='glorot_uniform',
+            trainable=True,
+            name='Wv'
+        )
+
+        super(SelfAttention, self).build(input_shape)
+
+    def call(self, inputs):
+        # Expect list: [query, key, value]
+        q, k, v = inputs
+
+        q = K.dot(q, self.Wq)
+        k = K.dot(k, self.Wk)
+        v = K.dot(v, self.Wv)
+
+        # Scaled dot-product attention
+        scores = K.batch_dot(q, k, axes=[2, 2])
+        dk = K.cast(K.shape(k)[-1], dtype=K.floatx())
+        scores = scores / K.sqrt(dk)
+
+        attention_weights = K.softmax(scores, axis=-1)
+        output = K.batch_dot(attention_weights, v)
+
+        return output
+
+#Архитектура модели
+#Кодировщик
+encoder_inputs = Input(shape=(max_input_length,))
+encoder_embedding = Embedding(input_vocab_size, 256)(encoder_inputs)
+encoder_lstm = LSTM(256, return_sequences=True, return_state=True)
+encoder_outputs, state_h, state_c = encoder_lstm(encoder_embedding)
+encoder_states = [state_h, state_c]
+
+#Декодировщик
+decoder_inputs = Input(shape=(max_output_length - 1,))
+decoder_embedding = Embedding(output_vocab_size, 256)(decoder_inputs)
+decoder_lstm = LSTM(256, return_sequences=True, return_state=True)
+decoder_outputs, _, _ = decoder_lstm(decoder_embedding, initial_state=encoder_states)
+
+# Attention: decoder attends to encoder outputs
+self_attention = SelfAttention()
+attention_output = self_attention(
+    [decoder_outputs, encoder_outputs, encoder_outputs]
+)
+
+# Combine decoder outputs with attention context
+decoder_concat = Concatenate(axis=-1)([decoder_outputs, attention_output])
+
+# Final Dense layer
+decoder_dense = Dense(output_vocab_size, activation='softmax')
+decoder_outputs = decoder_dense(decoder_concat)
+
+# Full Model
+model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Summary
+model.summary()
+
+
+#Обучение модели
+history_glorot_adam = model.fit([input_sequences, decoder_input_data], decoder_output_data, epochs=100, batch_size=16)
+
+plt.plot(history_glorot_adam.history['loss'])
+plt.title('Training Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.show()
+~~~
+
+
 
