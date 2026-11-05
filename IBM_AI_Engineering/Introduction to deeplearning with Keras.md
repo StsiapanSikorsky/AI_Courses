@@ -827,15 +827,15 @@ RNN обрабатывают данные последовательно, что
 На данный момент данный вид нейросетей RNN/LSTM практически вытеснены трансформерами
 
 ### <a id="title16"> Трансформеры (Transformers) </a>
-**Трансформеры** - разновидность архитектуры нейросетей. Данная архитектура произвела революцию в обработке естественного языка (NLP). Трансформеры используются для создания моделей глубокого обучения и лежат в основе ChatGPT/Gemini. Трансформеры отлично улавливают долгосрочные зависимости в последоватеьностях данных (в отличие от CNN и RNN) и они идеально подходят для задач машинного перевода, суммирования текста, ответа на ввопроы и генерации текста в изображение. Клюевым в трансформерах является механизм внимания
+**Трансформеры** - разновидность архитектуры нейросетей. Данная архитектура произвела революцию в обработке естественного языка (NLP). Трансформеры используются для создания моделей глубокого обучения и лежат в основе ChatGPT/Gemini. Трансформеры отлично улавливают долгосрочные зависимости в последовательностях данных (в отличие от CNN и RNN) и они идеально подходят для задач машинного перевода, суммирования текста, ответа на вопросы и генерации текста в изображение. Ключевым в трансформерах является механизм внимания
 
-**Механизм самовнимания** - механизм позволяющий модели оценивать важность разных частей входной последовательности при обработке каждого ввода или токена. Обращая внимание на соответствующие части входных данных трансформеры могут эффективно выявлять зависимости на больших расстояниях (Например в предложении Собака не перешла улицу, потому что она была слишком устала механизм самовнимания поймет что *она* скорее относится к *собака*, чем к *улица*)
+**Механизм самовнимания** - механизм позволяющий модели оценивать важность разных частей входной последовательности при обработке каждого ввода или токена. Обращая внимание на соответствующие части входных данных трансформеры могут эффективно выявлять зависимости на больших расстояниях (Например в предложении "Собака не перешла улицу, потому что она слишком устала" механизм самовнимания поймет что *она* скорее относится к *собака*, чем к *улица*)
 
 #### Трансформеры используют механизм самовнимания для обработки тектовых данных состоящий из частей:
-1) Для кадого входного токена генерируются векторы запроса(Q)/ключа(K)/значения(V)
-Q-представляет собой слово, на котором мы сосредоточены (Что я ищу?)
-K-все остальные слова (Что я могу предложить?)
-V-содержит информацию которую нужно передать следующему слою (Что я реально предлогаю?)
+1) Для каждого входного токена генерируются векторы запроса(Q)/ключа(K)/значения(V)  
+Q-представляет собой слово, на котором мы сосредоточены (Что я ищу?)  
+K-все остальные слова (Что я могу предложить?)   
+V-содержит информацию которую нужно передать следующему слою (Что я реально предлогаю?)   
 
 2) Оценка внимания - вектор запроса токена Q сравнивается с ключевым вектором К всех других токенов при помощи точечного воспроизведения. В результате получается набор баллов внимания (на сколько они связаны), указывающий на соответствие каждого токена текущему токену
 
@@ -1094,7 +1094,200 @@ autoencoder.fit(X_train, X_train, epochs=50, batch_size=128)
 
 **Тонкая настройка (Fine-tuning)** - позволяет модели корректировать предварительно обученные веса в соответствии с новыми данными, приводит к значительному повышению производительности (особенно ессли новый набор данных сильно отличаеттся от старого). Путем тонкой настройки мы осуществляем трансферное обучение (адаптация предобученной модели к новой сопутствующей задаче)
 
-Тонкая натройка включает в себя размораживание нескольких верхних слоев замороженной основы модели, используется для извлечения признаков и совместного обучения только что добавленной части модели и верхнихслоев
+Тонкая настройка включает в себя размораживание нескольких верхних слоев замороженной основы модели, используется для извлечения признаков и совместного обучения только что добавленной части модели и верхнихслоев
+
+Практика: классификатор повреждений самолетов на основе модели VGG16
+~~~Python
+import warnings
+warnings.filterwarnings('ignore')
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import zipfile
+import keras
+from keras.models import Sequential, Model
+from keras.layers import Dense, Dropout, Flatten
+from keras.applications import VGG16
+from keras.optimizers import Adam
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import matplotlib.pyplot as plt
+import numpy as np
+from keras.preprocessing import image
+import random
+
+import tarfile
+import urllib.request
+import shutil
+
+seed_value = 42
+random.seed(seed_value)
+np.random.seed(seed_value)
+tf.random.set_seed(seed_value)
+
+#Подготовка набора данных
+'''Определяем параметры конфигурации'''
+batch_size = 32
+n_epochs = 5
+img_rows, img_cols = 224, 224
+input_shape = (img_rows, img_cols, 3)
+
+
+'''Извлекаем набор данных'''
+url = "https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/ZjXM4RKxlBK9__ZjHBLl5A/aircraft-damage-dataset-v1.tar"
+tar_filename = "aircraft-damage-dataset-v1.tar"
+extract_folder = "aircraft-damage-dataset-v1"
+
+urllib.request.urlretrieve(url, tar_filename)
+print(f"Download {tar_filename}. Extraction will begin now")
+
+
+'''Проверяем что источник данных существует'''
+if os.path.exists(extract_folder):
+    print(f'The folder {extract_folder} exists. Removing the existing folder')
+    shutil.rmtree(extract_folder)
+    print(f"Removing the existing folder: {extract_folder}")
+
+
+'''Извлекаем данные из .tar файла'''
+with tarfile.open(tar_filename, "r") as tar_ref:
+    tar_ref.extractall(extract_folder)
+    print(f"Extracted {extract_folder}. Successfully.")
+
+
+'''Определяем дериктории для train/test/validation'''
+train_dir = "aircraft-damage-dataset-v1/aircraft_damage_dataset_v1/train"
+test_dir = "aircraft-damage-dataset-v1/aircraft_damage_dataset_v1/test"
+valid_dir = "aircraft-damage-dataset-v1/aircraft_damage_dataset_v1/valid"
+
+
+#Предварительная оработка данных
+'''Создание генераторов ImageDataGenerator для обучения'''
+train_datagen = ImageDataGenerator(rescale=1./255)
+valid_datagen = ImageDataGenerator(rescale=1./255)
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+
+'''Загруаем данные  из каталога и геерируем набор данных обучения'''
+'''функция flow_from_directory используется для чтения изображений из каталога и генераций партий данных для вхда в модель'''
+train_generator = train_datagen.flow_from_directory(
+    directory=train_dir,
+    target_size=(img_rows, img_cols),
+    batch_size=batch_size,
+    seed=seed_value,
+    class_mode='binary',
+    shuffle=True
+)
+
+valid_generator = valid_datagen.flow_from_directory(
+    directory=valid_dir,
+    class_mode='binary',
+    seed=seed_value,
+    batch_size=batch_size,
+    shuffle=False,
+    target_size=(img_rows, img_cols)
+)
+
+test_generator = test_datagen.flow_from_directory(
+    directory=test_dir,
+    class_mode='binary',
+    seed=seed_value,
+    batch_size=batch_size,
+    shuffle=False,
+    target_size=(img_rows, img_cols)
+)
+
+
+'''Определяем модель'''
+base_model = VGG16(weights='imagenet', include_top=False, input_shape=(img_rows, img_cols, 3))
+
+'''Извлекаем выход последнего слоя VGG16 (экстрактора функции),
+    затем создаем новую модель с этим модифицируемым выходом
+    и замораживаем базовые слои  VGG16 (чтобы веса не обновялись во время тренировок)'''
+output = base_model.layers[-1].output
+output = Flatten()(output)
+base_model = Model(inputs=base_model.input, outputs=output)
+
+'''Заморозка слоев VGG16'''
+for layer in base_model.layers:
+    layer.trainable = False
+
+'''Добавляем свой классификатор поверх VGG16'''
+model = Sequential()
+model.add(base_model)
+model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.3))
+model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.3))
+model.add(Dense(1, activation='sigmoid'))
+
+'''Компиляция модели'''
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+#Обучение модели
+history = model.fit(
+    train_generator,
+    epochs=n_epochs,
+    validation_data=valid_generator,
+)
+
+train_history = model.history.history
+
+#Визуализация результатов
+plt.title("Training Loss")
+plt.ylabel("Loss")
+plt.xlabel('Epoch')
+plt.plot(train_history['loss'])
+plt.show()
+
+plt.title("Validation Loss")
+plt.ylabel("Loss")
+plt.xlabel('Epoch')
+plt.plot(train_history['val_loss'])
+plt.show()
+
+plt.figure(figsize=(5, 5))
+plt.plot(train_history['accuracy'], label='Training Accuracy')
+plt.plot(train_history['val_accuracy'], label='Validation Accuracy')
+plt.title("Accuracy Curve")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
+
+#Оценка модли (на тестовом наборе)
+test_loss, test_accuracy = model.evaluate(test_generator, steps=test_generator.samples//test_generator.batch_size)
+print(f"Test Loss: {test_loss:.4f};\nTest Accuracy: {test_accuracy:.4f}")
+
+#Визуализация прогнозов
+def plot_image_with_title(image, model, true_label, predicted_label, class_names):
+    plt.figure(figsize=(6, 6))
+    plt.imshow(image)
+
+    true_label_name=class_names[true_label]
+    pred_label_name=class_names[predicted_label]
+
+    plt.title(f"True: {true_label_name}\nPred: {pred_label_name}")
+    plt.axis('off')
+    plt.show()
+
+
+'''Функция тестирующая модель с картинками на тестовом сете'''
+def test_model_on_image(test_generator, model, index_to_plot=0):
+    test_images, test_labels = next(test_generator)
+
+    predictions = model.predict(test_images)
+    predict_classes = (predictions > 0.5).astype(int).flatten()
+
+    class_indices = test_generator.class_indices
+    class_names = {v: k for k, v in class_indices.items()}
+
+    imge_to_plot = test_images[index_to_plot]
+
+'''Визуализация резуьатов'''
+test_model_on_image(test_generator, model, index_to_plot=1)
+~~~
 
 
 
