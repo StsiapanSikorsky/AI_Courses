@@ -58,20 +58,48 @@ model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=
 ### Функциональный API Keras и API подклассификации
 Основной синтаксис:
 ~~~Python
+import numpy as np
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.layers import Dense, Input
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='tensorflow')
 
-#Определяем вход
-inputs = Input(shape=(784,))
 
-#Определяем плотный слой
-x = Dense(64, activation='relu')(inputs)
+#Объявляем входной слой
+input_layer = Input(shape=(20,))
+print(input_layer)
 
-#Определяем выходной слой
-outputs = Dense(10, activation='softmax')(x)
+#Добавляем скрытые слои
+'''64 нейрона в слое, каждый скрытый слой принимает на вход выход предыдущего слоя'''
+hidden_layer1 = Dense(64, activation='relu')(input_layer)
+hidden_layer2 = Dense(64, activatio='relu')(hidden_layer1)
 
-#Создаем модель
-model = Model(inputs=inputs, outputs=outputs)
+#Выходной слой
+output_layer = Dense(1, activation='sigmoid')(hidden_layer2)
+
+#Создаем модель указывая входные и выходные слои
+'''Соединяются входной и выходные слои ерез скрытые слои'''
+model = Model(input=input_layer, output=output_layer)
+'''Краткое изложение  модели'''
+model.summary()
+
+#Компиляция модели
+'''(оптимизатор, функция потерь, оценка точности во время обучения)'''
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+#Тренировка модели
+X_train = np.random.rand(1000, 20)
+y_train = np.random.randint(2, size=(1000, 1))
+model.fit(X_train, y_train, epochs=10, batch_size=32)
+
+#Оценка модели на тестовых данных
+X_test = np.random.rand(200, 20)
+y_test = np.random.randint(2, size=(200, 1))
+
+'''.evaluate вычисляет потери и точность модели на тестовых данных'''
+loss, accuracy = model.evaluate(X_test, y_test)
+print(f'Test loss: {loss}')
+print(f'Test accuracy: {accuracy}')
 ~~~
 
 Одним из преимуществ функционального API является возможность обработки моделей с несколькими входами и выходами. Это особенно полено в сложных приложениях таких как многозадачное обучение:
@@ -122,4 +150,22 @@ class MyModel(tf.keras.Model):
   def call(self, inputs):
     x=self.dense1(inputs)
     return self.dense2(x)
+~~~
+
+
+#### Отсев и пакетная нормализация
+*Отсев (Dropout)* - метод регуляризации помогающий предотвратить переобучение в нейросетях. Во время обучения *Dropout* случайным образом устанавливает долю входных единиц на ноль при каждом цикле обновления, это предотвращает черезмерную зависимость модели от любых конкретных нейронов, что побуждает нейросеть изучать более надежные функции, которые лучше обобщают невидимые данные. Отсев применяется только во время тренировки
+
+Слой Отсева:
+~~~Python
+dropout_layer = Dropout(rate=0.5)(hidden_layer)
+~~~
+
+*Пакетная нормализация (Batch normalization)* - метод применяющийся для улучшения тренировочной стабильности и скорости нейросетей. Нормализует выход предыдущего слоя путем центрирования и масштабирования данных, что стабилизирует процесс обучения
+
+Слой батчинга:
+~~~Python
+from tensorflow.keras.layers import BatchNormalization, Dense, Input
+
+batch_norm_layer = BatchNormalization()(hidden_layer)
 ~~~
