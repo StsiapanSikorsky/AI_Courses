@@ -5,6 +5,11 @@
 [   - введение в расширенный Keras  ](#title2)     
 [   - функциональный API Keras и API подклассификации  ](#title3)       
 [   - создание пользовательских слоев Keras  ](#title4)  
+[   - обзор TensorFlow 2.x   ](#title5)  
+[Усовершенствованные CNN в Keras](#title6)  
+[   - усовершенствованные CNN в Keras   ](#title7)  
+[   - методы расширения данных   ](#title8)  
+
 
 ## <a id="title1">▶️ Расширенные функциональные возможности Keras </a>  
 ### <a id="title2"> Введение в расширенный Keras </a>
@@ -344,5 +349,91 @@ model.fit(x_train, y_train, epochs=10, batch_size=32)
 - TFX Tensorflow (развертывание конвейеров ML)
 - TesnorBoard (набор инструментов визуализации, дающий представление о процессе обучения моделей, метрики и графики)
 
+
+## <a id="title6">▶️ Усовершенствованные CNN в Keras </a>
+### <a id="title7"> Усовершенствованные CNN в Keras </a>
+**CNN** - нейроети предназначенные для анализа визуальных данных, имитируя зрительную систему человека. Состоят из: сверточных слоев, слоев объединения и полносвязных слоев
+
+Базовая модель CNN Keras:
+~~~Python
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+
+model = Sequentil([
+  Conv2D(32, (3,3), activation='relu', input_shape=(64,64,3)),
+  MaxPooling2D((2,2)),
+  Conv2D(64, (3,3), activation='relu'),
+  MaxPooling2D((2,2)),
+  Flatten(),
+  Dense(128, activation='relu'),
+  Dense(10, activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.summary()
+~~~
+
+Более современные архитектуры могут значительно повысить производительность при выполнении сложных задач:
+1) VGG - архитектура известная простотой и глубиной. Состоит из сверточных слоев с небольшими фильтрами 3х3, за которым следуют слои с максимальным количеством пулов и полностью соединенных слоев
+~~~Python
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+
+model = Sequentil([
+  Conv2D(64, (3,3), activation='relu', input_shape=(64,64,3)),
+  Conv2D(64, (3,3), activation='relu'),
+  MaxPooling2D((2,2)),
+  Conv2D(128, (3,3), activation='relu'),
+  Conv2D(128, (3,3), activation='relu'),
+  MaxPooling2D((2,2)),
+  Conv2D(256, (3,3), activation='relu'),
+  Conv2D(256, (3,3), activation='relu'),
+  MaxPooling2D((2,2)),
+  Flatten(),
+  Dense(512, activation='relu'),
+  Dense(512, activation='relu'),
+  Dense(10, activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.summary()
+~~~
+
+2) ResNet - архитектура использующая остаточные соединения помогающие обучить глубокие сети, решая проблему исчезающего градиента. Остаточные соединения помогают сети изучать сопоставление идентификаторов
+~~~Python
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, Activation, Add, Flatten, Dense
+
+'''Функция остаточного блока'''
+def residual_block(x, filters, kernel_size=3, stride=1):
+  shortcut = x
+  x = Conv2D(filters, kernel_size, strides=stride, padding='same')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = Conv2D(filters, kernel_size, strides=1, padding='same')(x)
+  x = BatchNormalization()(x)
+  x = Add()([x, shortcut])
+  x = Activation('relu')(x)
+  return x
+
+input = Input(shape=(64,64,3))
+x = Conv2D(64, (7,7), strides=1, padding='same')(input)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+x = residual_block(x, 64)
+x = residual_block(x, 64)
+x = Flatten()(x)
+outputs = Dense(10, activation='softmax')(x)
+
+model = Model(input=input, outputs=outputs)
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.summary()
+~~~
+3) inception
+В них представлены такие концепции как:
+- более глубокие сети
+- остаточные соединения
+- многомасштабное извлечение функций
+
+### <a id="title8"> Методы расширения данных </a>
 
 
