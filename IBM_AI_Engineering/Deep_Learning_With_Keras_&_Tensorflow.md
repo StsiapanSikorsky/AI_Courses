@@ -434,6 +434,90 @@ model.summary()
 - остаточные соединения
 - многомасштабное извлечение функций
 
-### <a id="title8"> Методы расширения данных </a>
+### <a id="title8"> Методы увеличения данных </a>
+Методы увеличения данных:
+1) Ротация
+2) Переворачивание
+3) Масштабирование
+4) Добавление шума
+
+Для увеличения данных CNN в Keras используется ImageDataGeneraator
+~~~Python
+from tensorflow.keras.processing.image
+import ImageDataGenerator
+
+#Инициализируем генератор данных разными опциями увеличения
+'''поворот, сдвиг ширины, сдвиг высоты, масштабирование, горизонтальное переворачивание'''
+datagen = ImageDataGenerator(
+  rotation_range=40,
+  width_shift_range=0.2,
+  height_shift_range=0.2,
+  shear_range=0.2,
+  zoom_range=0.2,
+  horizontal_flip=True,
+  fill_mode='nearest'
+)
+
+from tensorflow.keras.preprocessing
+import image
+
+#Загрузка образца изображения
+img = image.load('sample.jpg)
+
+#Преобразование изображения в массив
+x = image.img_to_array(img)
+
+#Изменяем форму массива добавляя пакетное измерение
+x = x.reshape((1,) + x.shape)
+
+#Генерируем пакет доп изображений из входного
+for batch in datagen.flow(x, batch_size=1):
+  plt.figure(i)
+  imgplot = plt.imshow(image.arrav_to_img(batch[0]))
+~~~
+
+Keras позволяет использовать продвинутые методы:
+- функциональная нормализация
+- нормализация на основе выборки
+- применение настраиваемых функций дополнения
+
+Пример функциональной и выборочной нормализации:
+~~~Python
+datagen = ImageDateGenerator(
+  '''Задаем среднее набора данных = 0'''
+  featurewise_center=True,
+  '''Нормализуем набор данных и имеем стандартное отклонение = 1'''
+  featurewise_std_normaliztion=True,
+  '''Задаем среднее значение каждой выборки = 0'''
+  samplewise_center=True,
+  '''Нормализуем стандартное отклонение каждой выборки = 1'''
+  samplewise_std_normalization=True
+)
+
+#Вычисляем среднее значение и стандартное отклонение набора данных изображений
+datagen.fit(training_images)
+
+#datagen.flow генерирует нормализованные изображения из обучающего набора
+i = 0
+for batch in datagen.flow(training_images, batch_size=32):
+  plt.figure(i)
+  imgplot = plt.imshow(image.array_to_img(batch[0]))
+  i+=1
+  if i % 4 ==0
+    break
+plt.show()
+~~~
+
+Пример: настраиваемая функция увеличения которая добавляет случайный шум к изображениям
+~~~Python
+import numpy as np
+
+def add_random_noise(image):
+  noise = np.random.normal(0, 0.1, image_shape)
+  return image + noise
+
+#Определяем настраиваемую функцию для изображения
+datagen = ImageDataGenerato(processing_function = add_random_noise)
+~~~
 
 
