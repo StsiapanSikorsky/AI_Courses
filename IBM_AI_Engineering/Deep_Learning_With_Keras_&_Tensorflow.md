@@ -453,37 +453,44 @@ model.summary()
 
 Для увеличения данных CNN в Keras используется ImageDataGenerator
 ~~~Python
-from tensorflow.keras.processing.image
-import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array, array_to_img
+import matplotlib.pyplot as plt
+import numpy as np
 
-#Инициализируем генератор данных разными опциями увеличения
-'''поворот, сдвиг ширины, сдвиг высоты, масштабирование, горизонтальное переворачивание'''
 datagen = ImageDataGenerator(
-  rotation_range=40,
-  width_shift_range=0.2,
-  height_shift_range=0.2,
-  shear_range=0.2,
-  zoom_range=0.2,
-  horizontal_flip=True,
-  fill_mode='nearest'
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.5,
+    horizontal_flip=True,
+    fill_mode='nearest'
 )
 
-from tensorflow.keras.preprocessing
-import image
+#Загружаем и подготавливаем данные
+image_paths = [
+    'img/training_images1.jpg',
+    'img/training_images2.jpg',
+    'img/training_images3.jpg'
+]
 
-#Загрузка образца изображения
-img = image.load('sample.jpg)
+training_images = []
+for image_path in image_paths:
+    img = load_img(image_path, target_size=(224, 224))
+    img_array = img_to_array(img)
+    training_images.append(img_array)
+training_images = np.array(training_images)
 
-#Преобразование изображения в массив
-x = image.img_to_array(img)
 
-#Изменяем форму массива добавляя пакетное измерение
-x = x.reshape((1,) + x.shape)
-
-#Генерируем пакет доп изображений из входного
-for batch in datagen.flow(x, batch_size=1):
-  plt.figure(i)
-  imgplot = plt.imshow(image.arrav_to_img(batch[0]))
+i = 0
+for batch in datagen.flow(training_images, batch_size=1):
+    plt.figure(i)
+    imgplot = plt.imshow(array_to_img(batch[0]))
+    plt.title(f'Augmented Image {i + 1}')
+    i += 1
+    if i % 4 == 0:
+        break
+plt.show()
 ~~~
 
 Keras позволяет использовать продвинутые методы:
