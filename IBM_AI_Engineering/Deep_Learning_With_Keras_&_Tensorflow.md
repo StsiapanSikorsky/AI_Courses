@@ -477,12 +477,14 @@ image_paths = [
 
 training_images = []
 for image_path in image_paths:
+    '''Загрузка изображений и изменение его размера на 224х224'''
     img = load_img(image_path, target_size=(224, 224))
+    '''Преобразуем изображение в массив NumPy'''
     img_array = img_to_array(img)
     training_images.append(img_array)
 training_images = np.array(training_images)
 
-
+#Генерация пакетов дополнительных изображений
 i = 0
 for batch in datagen.flow(training_images, batch_size=1):
     plt.figure(i)
@@ -544,3 +546,80 @@ datagen = ImageDataGenerato(processing_function = add_random_noise)
 Трансферное обучение включает в себя использование предварительно обуенной модели обученной на большом наборе данных (таком как ImageNet) и доработку ее на новом наборе
 
 Используя VGG16 предоубученную на миллионах изображений и умеющую распознавать края, текстуры, формы и другие общие характеристики, мы можем использовать как сверточную базовую модель для наших задач экономя тем самым время и вычислительные ресурсы, также уменьшая размер необходимых для обучения данных
+
+Практика: трансферное обучение на VGG16 с заморозкой и разморозкой верхних слоев и обучением на черных и белых квадратах
+~~~Python
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import os
+from PIL import Image
+from tensorflow.keras.optimizers import Adam
+
+
+#Загружаем предварительно обученную модель
+base_model = VGG16(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+
+#Замораживаем слои базовой модели
+for layer in base_model.layers:
+    layer.trainable = False
+
+#Создаем и компилируем модель
+'''!Конструктор Sequential принимает список слоев []'''
+model = Sequential([
+    base_model,
+    Flatten(),
+    Dense(256, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+#Создаем образы заполнителя
+'''Создаем директории'''
+os.makedirs('sample_data/class_a', exist_ok=True)
+os.makedirs('sample_data/class_b', exist_ok=True)
+
+'''Создаем 10 простых изображений каждого класса'''
+for i in range(10):
+    '''Пустые белые изображения класса а'''
+    img = Image.fromarray(np.ones((224,224,3), dtype=np.uint8) * 255)
+    img.save(f'sample_data/class_a/img_{i}.jpg')
+
+    '''Пустые белые изображения класса b'''
+    img = Image.fromarray(np.zeros((224, 224, 3), dtype=np.uint8))
+    img.save(f'sample_data/class_b/img_{i}.jpg')
+
+print("Sample images created in 'sample_data/'")
+
+
+#Тренируем модель
+'''Загружаем и подготавливем датасет'''
+train_datagen = ImageDataGenerator(rescale=1./255)
+train_generator = train_datagen.flow_from_directory(
+    'sample_data',
+    target_size=(224,224),
+    batch_size=32,
+    class_mode='binary'
+)
+print(f"Found {train_generator.samples} images belonging to {train_generator.num_classes} classes.")
+
+'''Тренируем модель'''
+if train_generator.samples > 0:
+    model.fit(train_generator, epochs=10)
+
+
+#Тонкая настройка модели(Fine-tuning)
+'''Размораживаем верхние слои базовой модели'''
+for layer in base_model.layers[-4:]:
+    layer.trainable = True
+
+'''Снова компилируем модель'''
+'''Задаем не стандартный шаг Adam (0.001 велик) чтобы не разрушать предобученные веса'''
+model.compile(optimizer=Adam(learning_rate=1e-5), loss='binary_crossentropy', metrics=['accuracy'])
+
+'''Снова тренируем модель'''
+model.fit(train_generator, epochs=10)
+~~~
